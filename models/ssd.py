@@ -108,10 +108,11 @@ class SSDFeatureExtractorResNet(nn.Module):
 
 def _resnet_extractor(backbone_name: str, pretrained: bool, trainable_layers: int):
     backbone = resnet.__dict__[backbone_name](pretrained=pretrained)
-
+    
+    #is this part really necessary?
     assert 0 <= trainable_layers <= 5
-    layers_to_train = ['layer4', 'layer3', 'layer2', 'layer1', 'conv1'][:trainable_layers]
-    if trainable_layers == 5:
+    layers_to_train = ['layer3', 'layer2', 'layer1', 'conv1'][:trainable_layers]
+    if trainable_layers == 4:
         layers_to_train.append('bn1')
     for name, parameter in backbone.named_parameters():
         if all([not name.startswith(layer) for layer in layers_to_train]):
@@ -127,66 +128,26 @@ def ssd300_resnet50(pretrained: bool = False, progress: bool = True, num_classes
     size = (300, 300)
 
     trainable_backbone_layers = _validate_trainable_layers(
-        pretrained or pretrained_backbone, trainable_backbone_layers, 5, 5)
-
-    print('trainable backbones: ', trainable_backbone_layers)
+        pretrained or pretrained_backbone, trainable_backbone_layers, 4, 4)
 
     if pretrained:
         pretrained_backbone = False
 
     backbone = _resnet_extractor("resnet50", pretrained_backbone, trainable_backbone_layers)
-    # backbone.eval()
 
-    # #print(backbone)
+    anchor_generator = DefaultBoxGenerator([[2], [2, 3], [2, 3], [2, 3], [2], [2]],
+                                            scales=[0.07, 0.15, 0.33, 0.51, 0.69, 0.87, 1.05])
+    model = models.detection.SSD(backbone, anchor_generator, size, num_classes, **kwargs)
 
-    # device = next(backbone.parameters()).device
-   
+    if pretrained:
+        weights_name = 'ssd300_resnet50_coco'
+        if model_urls.get(weights_name, None) is None:
+            raise ValueError("No checkpoint is available for model {}".format(weights_name))
+        state_dict = load_state_dict_from_url(model_urls[weights_name], progress=progress)
+        model.load_state_dict(state_dict)
 
-    # with torch.no_grad():
-    #     tmp_img = torch.zeros((1, 3, size[1], size[0]), device=device)
-    #     features = backbone(tmp_img)
-
-    # anchor_generator = DefaultBoxGenerator([[2], [2, 3], [2, 3], [2, 3], [2], [2]],
-    #                                        scales=[0.07, 0.15, 0.33, 0.51, 0.69, 0.87, 1.05])
-    # model = models.detection.SSD(backbone, anchor_generator, size, num_classes, **kwargs)
-
-    # if pretrained:
-    #     weights_name = 'ssd320_resnet50_coco'
-    #     if model_urls.get(weights_name, None) is None:
-    #         raise ValueError("No checkpoint is available for model {}".format(weights_name))
-    #     state_dict = load_state_dict_from_url(model_urls[weights_name], progress=progress)
-    #     model.load_state_dict(state_dict)
-
-    # return model
-
-
-ssd300_resnet50(pretrained=False, progress=True, pretrained_backbone=True)
-
-#print(model)
-# model = models.detection.ssd300_vgg16(pretrained=True)
-
-# backbone = "resnet"
-
-# #configs that will change in the function
-# pretrained = False
-# pretrained_backbone = True
-# trainable_backbone_layers = None
-# num_classes = 91
-# progress = True
-
-# if backbone == "resnet":
-#     trainable_backbone_layers = _validate_trainable_layers(
-#         pretrained or pretrained_backbone, trainable_backbone_layers, 6, 6)
-
-# elif backbone == "vgg":
-#     trainable_backbone_layers = _validate_trainable_layers(
-#         pretrained or pretrained_backbone, trainable_backbone_layers, 5, 5)
-
-# #TODO Handle mobilenet backbones, v1, v2, v3-large, v3-small
+    return model
 
 
 
 
-# if pretrained:
-#     # no need to download the backbone if pretrained is set
-#     pretrained_backbone = False
