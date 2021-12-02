@@ -3,6 +3,7 @@
 # Libtorch
 import torch
 import warnings
+import sys
 
 from collections import OrderedDict
 from typing import Any, Optional, Dict
@@ -12,8 +13,10 @@ from torch import nn, Tensor
 import torchvision.models.resnet as resnet
 import torchvision.models as models
 from torchvision.models.utils import load_state_dict_from_url
-from torchvision.models.detection.anchor_utils import DefaultBoxGenerator
 from torchvision.models.detection.backbone_utils import _validate_trainable_layers
+
+sys.path.append('torchvision/models/detection')
+from anchor_utils import DefaultBoxGenerator
 
 model_urls = {
     'ssd300_vgg16_coco': 'https://download.pytorch.org/models/ssd300_vgg16_coco-b556d3b4.pth',

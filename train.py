@@ -1,5 +1,4 @@
 from random import seed
-from mongoengine.queryset import transform
 import torch
 from torch import distributed
 import torchvision
@@ -10,13 +9,11 @@ import datetime
 import presets
 import utils
 
-from  dataset import load_coco_dataset
 from models.ssd import ssd300_resnet50
 from engine import train_one_epoch, evaluate
 from coco_utils import get_coco, get_coco_kp
 from group_by_aspect_ratio import GroupedBatchSampler, create_aspect_ratio_groups
 
-import fiftyone.utils.torch as fout
 
 def get_dataset(name, image_set, transform, data_path):
     paths = {
