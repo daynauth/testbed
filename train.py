@@ -57,7 +57,7 @@ def get_args_parser(add_help=True):
                         help='decrease lr every step-size epochs (multisteplr scheduler only)')
     parser.add_argument('--lr-gamma', default=0.1, type=float,
                         help='decrease lr by a factor of lr-gamma (multisteplr scheduler only)')
-    parser.add_argument('--print-freq', default=20, type=int, help='print frequency')
+    parser.add_argument('--print-freq', default=2000, type=int, help='print frequency')
     parser.add_argument('--output-dir', default='.', help='path where to save')
     parser.add_argument('--resume', default='', help='resume from checkpoint')
     parser.add_argument('--start_epoch', default=0, type=int, help='start epoch')
@@ -128,6 +128,8 @@ def main(args):
     print("Creating model")
     model = ssd300_resnet50(False, True, num_classes, True)
     model.to(device)
+
+    args.lr = args.lr * (args.batch_size/32)
 
     model_without_ddp = model
     params = [p for p in model.parameters() if p.requires_grad]
