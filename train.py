@@ -9,7 +9,7 @@ import datetime
 import presets
 import utils
 
-from models.ssd import ssd300_resnet50
+from models.ssd import ssd300_resnet50, ssd_resnet50_adapted, ssd_resnet50_adapted_v2
 from engine import train_one_epoch, evaluate
 from coco_utils import get_coco, get_coco_kp
 from group_by_aspect_ratio import GroupedBatchSampler, create_aspect_ratio_groups
@@ -57,7 +57,7 @@ def get_args_parser(add_help=True):
                         help='decrease lr every step-size epochs (multisteplr scheduler only)')
     parser.add_argument('--lr-gamma', default=0.1, type=float,
                         help='decrease lr by a factor of lr-gamma (multisteplr scheduler only)')
-    parser.add_argument('--print-freq', default=2000, type=int, help='print frequency')
+    parser.add_argument('--print-freq', default=20, type=int, help='print frequency')
     parser.add_argument('--output-dir', default='.', help='path where to save')
     parser.add_argument('--resume', default='', help='resume from checkpoint')
     parser.add_argument('--start_epoch', default=0, type=int, help='start epoch')
@@ -126,7 +126,8 @@ def main(args):
         collate_fn=utils.collate_fn)
 
     print("Creating model")
-    model = ssd300_resnet50(False, True, num_classes, True)
+    #model = ssd300_resnet50(False, True, num_classes, True)
+    model = ssd_resnet50_adapted_v2(False, True, num_classes, True)
     model.to(device)
 
     args.lr = args.lr * (args.batch_size/32)

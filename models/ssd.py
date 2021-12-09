@@ -687,3 +687,215 @@ def ssd300_mobilenet_v2(pretrained: bool = False, progress: bool = True, num_cla
     #out_channels = det_utils.retrieve_out_channels(backbone, size)
     # num_anchors = anchor_generator.num_anchors_per_location()
     # assert len(out_channels) == len(anchor_generator.aspect_ratios)
+
+
+class ResnetAdapter(nn.Module):
+    def __init__(self, backbone):
+        super().__init__()
+
+        self.features = nn.Sequential(
+            backbone.conv1,
+            backbone.bn1,
+            backbone.relu,
+            backbone.maxpool,
+            backbone.layer1,
+            backbone.layer2,
+            backbone.layer3
+        )
+
+        # Patch last block's strides to get valid output sizes
+        for m in self.features[-1][0].modules():
+            if hasattr(m, 'stride'):
+                m.stride = 1
+
+        self.reducer = nn.Sequential(
+            nn.Conv2d(1024, 512, kernel_size = 1, bias = False),
+            nn.BatchNorm2d(512),
+            nn.ReLU(inplace=True)
+        )
+
+        extra = nn.ModuleList([
+            nn.Sequential(
+                nn.Conv2d(512, 1024, kernel_size=1, bias=False),
+                nn.BatchNorm2d(1024),
+                nn.ReLU(inplace=True),
+                nn.Conv2d(1024, 1024, kernel_size=3, padding=1, stride=2, bias=False),
+                nn.BatchNorm2d(1024),
+                nn.ReLU(inplace=True),
+            ),
+            nn.Sequential(
+                nn.Conv2d(1024, 256, kernel_size=1, bias=False),
+                nn.BatchNorm2d(256),
+                nn.ReLU(inplace=True),
+                nn.Conv2d(256, 512, kernel_size=3, padding=1, stride=2, bias=False),
+                nn.BatchNorm2d(512),
+                nn.ReLU(inplace=True),
+            ),
+            nn.Sequential(
+                nn.Conv2d(512, 128, kernel_size=1, bias=False),
+                nn.BatchNorm2d(128),
+                nn.ReLU(inplace=True),
+                nn.Conv2d(128, 256, kernel_size=3, padding=1, stride=2, bias=False),
+                nn.BatchNorm2d(256),
+                nn.ReLU(inplace=True),
+            ),
+            nn.Sequential(
+                nn.Conv2d(256, 128, kernel_size=1, bias=False),
+                nn.BatchNorm2d(128),
+                nn.ReLU(inplace=True),
+                nn.Conv2d(128, 256, kernel_size=3, bias=False),
+                nn.BatchNorm2d(256),
+                nn.ReLU(inplace=True),
+            ),
+            nn.Sequential(
+                nn.Conv2d(256, 128, kernel_size=1, bias=False),
+                nn.BatchNorm2d(128),
+                nn.ReLU(inplace=True),
+                nn.Conv2d(128, 256, kernel_size=3, bias=False),
+                nn.BatchNorm2d(256),
+                nn.ReLU(inplace=True),
+            )
+        ])
+
+        _xavier_init(extra)
+        self.extra = extra
+
+        _xavier_init(self.reducer)
+
+    def forward(self, x):
+        x = self.features(x)
+        x = self.reducer(x)
+        output = [x]
+
+        for block in self.extra:
+            x = block(x)
+            output.append(x)
+
+        return OrderedDict([(str(i), v) for i, v in enumerate(output)])
+
+def ssd_resnet50_adapted(pretrained: bool = False, progress: bool = True, num_classes: int = 91,
+                    pretrained_backbone: bool = True, trainable_backbone_layers: Optional[int] = None, **kwargs: Any):
+
+    pretrained_model = models.detection.ssd300_vgg16(pretrained=True)
+    pretrained_head = pretrained_model.head
+
+    backbone = ResnetAdapter(models.resnet50())
+    size = (300, 300)
+    anchor_generator = pretrained_model.anchor_generator
+
+    model = SSD(backbone, anchor_generator, size, num_classes, head = pretrained_head, **kwargs)
+    return model
+
+
+class ResnetAdapterV2(nn.Module):
+    def __init__(self, backbone):
+        super().__init__()
+
+        self.features = nn.Sequential(
+            *[u for v, u in list(backbone.items())[:-1]]
+        )
+
+        for m in self.features[-1][0].modules():
+            if hasattr(m, 'stride'):
+                m.stride = 1
+
+
+        self.reducer = nn.Sequential(
+            nn.Conv2d(1024, 512, kernel_size = 1, bias = False),
+            nn.BatchNorm2d(512),
+            nn.ReLU(inplace=True)
+        )
+
+        extra = nn.ModuleList([
+            nn.Sequential(
+                nn.Conv2d(512, 1024, kernel_size=1, bias=False),
+                nn.BatchNorm2d(1024),
+                nn.ReLU(inplace=True),
+                nn.Conv2d(1024, 1024, kernel_size=3, padding=1, stride=2, bias=False),
+                nn.BatchNorm2d(1024),
+                nn.ReLU(inplace=True),
+            ),
+            nn.Sequential(
+                nn.Conv2d(1024, 256, kernel_size=1, bias=False),
+                nn.BatchNorm2d(256),
+                nn.ReLU(inplace=True),
+                nn.Conv2d(256, 512, kernel_size=3, padding=1, stride=2, bias=False),
+                nn.BatchNorm2d(512),
+                nn.ReLU(inplace=True),
+            ),
+            nn.Sequential(
+                nn.Conv2d(512, 128, kernel_size=1, bias=False),
+                nn.BatchNorm2d(128),
+                nn.ReLU(inplace=True),
+                nn.Conv2d(128, 256, kernel_size=3, padding=1, stride=2, bias=False),
+                nn.BatchNorm2d(256),
+                nn.ReLU(inplace=True),
+            ),
+            nn.Sequential(
+                nn.Conv2d(256, 128, kernel_size=1, bias=False),
+                nn.BatchNorm2d(128),
+                nn.ReLU(inplace=True),
+                nn.Conv2d(128, 256, kernel_size=3, bias=False),
+                nn.BatchNorm2d(256),
+                nn.ReLU(inplace=True),
+            ),
+            nn.Sequential(
+                nn.Conv2d(256, 128, kernel_size=1, bias=False),
+                nn.BatchNorm2d(128),
+                nn.ReLU(inplace=True),
+                nn.Conv2d(128, 256, kernel_size=3, bias=False),
+                nn.BatchNorm2d(256),
+                nn.ReLU(inplace=True),
+            )
+        ])
+
+        _xavier_init(extra)
+        self.extra = extra
+
+        _xavier_init(self.reducer)
+
+
+    def forward(self, x):
+        x = self.features(x)
+        x = self.reducer(x)
+
+        output = [x]
+
+        for block in self.extra:
+            x = block(x)
+            output.append(x)
+
+        return OrderedDict([(str(i), v) for i, v in enumerate(output)])
+
+
+def ssd_resnet50_adapted_v2(pretrained: bool = False, progress: bool = True, num_classes: int = 91,
+                    pretrained_backbone: bool = True, trainable_backbone_layers: Optional[int] = None, **kwargs: Any):  
+
+    #grab pre-trained retinanet model (resnet 50 backbone)
+    model = models.detection.retinanet_resnet50_fpn(pretrained=True)
+    
+    #get the resnet backbone from this model
+    pretrained_backbone = model.backbone.body
+
+    #freeze all backbone layers except layer 3 and 4
+    layers_to_train = ['layer3', 'layer4']
+
+    for name, parameter in pretrained_backbone.named_parameters():
+        if all([not name.startswith(layer) for layer in layers_to_train]):
+            parameter.requires_grad_(False)
+
+
+
+    #attach ssd layers to the backbone
+    backbone = ResnetAdapterV2(pretrained_backbone)
+    pretrained_model = models.detection.ssd300_vgg16(pretrained=True)
+
+    #don't freeze head. at least not yet.  
+    pretrained_head = pretrained_model.head
+
+    size = (300, 300)
+    anchor_generator = pretrained_model.anchor_generator
+    
+    model = SSD(backbone, anchor_generator, size, num_classes, head = pretrained_head, **kwargs)
+
+    return model
