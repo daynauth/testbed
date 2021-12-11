@@ -10,7 +10,7 @@ if not os.path.isdir(path):
     os.mkdir(path)
 
 #grab all the files in the directory
-files = glob.glob('testing/image_2/*')
+files = glob.glob('training/image_2/*')
 
 #randomize the list just in case
 random.shuffle(files)
