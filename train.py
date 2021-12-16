@@ -1,6 +1,7 @@
 from random import seed
 import torch
 from torch import distributed
+from torch.utils import data
 import torchvision
 import time
 import os
@@ -9,16 +10,25 @@ import datetime
 import presets
 import utils
 
-from models.ssd import ssd300_resnet50, ssd_resnet50_adapted, ssd_resnet50_adapted_v2
+import torchvision.models as models
+
+from models.ssd import ssd300_resnet50, ssd_resnet50_adapted, ssd_resnet50_adapted_v2, ssd300_resnet101,\
+    ssd300_resnet152, ssd300_mobilenet_v2, ssd_frozen
+
+import models.ssd
 from engine import train_one_epoch, evaluate
-from coco_utils import get_coco, get_coco_kp
+from coco_utils import get_coco, get_coco_kp, get_kitti
 from group_by_aspect_ratio import GroupedBatchSampler, create_aspect_ratio_groups
 
+torch.autograd.set_detect_anomaly(False)  
+torch.autograd.profiler.profile(False)  
+torch.autograd.profiler.emit_nvtx(False)
 
 def get_dataset(name, image_set, transform, data_path):
     paths = {
         "coco": (data_path, get_coco, 91),
-        "coco_kp": (data_path, get_coco_kp, 2)
+        "coco_kp": (data_path, get_coco_kp, 2),
+        "kitti": (data_path, get_kitti, 8)
     }
     p, ds_fn, num_classes = paths[name]
 
@@ -34,7 +44,7 @@ def get_args_parser(add_help=True):
 
     parser.add_argument('--data-path', default='/data/datasets/coco', help='dataset')
     parser.add_argument('--dataset', default='coco', help='dataset')
-    #parser.add_argument('--model', default='maskrcnn_resnet50_fpn', help='model')
+    parser.add_argument('--model', default='ssd_frozen', help='model')
     parser.add_argument('--device', default='cuda', help='device')
     parser.add_argument('-b', '--batch-size', default=2, type=int,
                         help='images per gpu, the total batch size is $NGPU x batch_size')
@@ -93,11 +103,8 @@ def get_args_parser(add_help=True):
     return parser
 
 def main(args):
-    #all the configs for training
-    #data_path = '/data/datasets/coco'
-    #output_dir = 'saved'
-
     device = torch.device('cuda')
+    torch.backends.cudnn.benchmark = True
 
     # Data Loading code
     print('loading data')
@@ -118,7 +125,8 @@ def main(args):
 
     data_loader = torch.utils.data.DataLoader(
         dataset, batch_sampler=train_batch_sampler, num_workers=args.workers,
-        collate_fn=utils.collate_fn)
+        collate_fn=utils.collate_fn, pin_memory = True)
+
 
     data_loader_test = torch.utils.data.DataLoader(
         dataset_test, batch_size=1,
@@ -126,11 +134,8 @@ def main(args):
         collate_fn=utils.collate_fn)
 
     print("Creating model")
-    #model = ssd300_resnet50(False, True, num_classes, True)
-    model = ssd_resnet50_adapted_v2(False, True, num_classes, True)
+    model = models.ssd.__dict__[args.model](False, True, num_classes, True)
     model.to(device)
-
-    args.lr = args.lr * (args.batch_size/32)
 
     model_without_ddp = model
     params = [p for p in model.parameters() if p.requires_grad]
@@ -177,8 +182,9 @@ def main(args):
                 checkpoint,
                 os.path.join(args.output_dir, 'checkpoint.pth'))
 
-        # evaluate after every epoch
-        evaluate(model, data_loader_test, device=device)
+        # evaluate after every 10 epoch or at the final epoch
+        if (epoch + 1) % 10 == 0 or (epoch + 1) == args.epochs:
+            evaluate(model, data_loader_test, device=device)
 
     total_time = time.time() - start_time
     total_time_str = str(datetime.timedelta(seconds=int(total_time)))

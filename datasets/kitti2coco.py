@@ -24,7 +24,8 @@ def generate_annotations(image_type = "train"):
     for i, c in enumerate(category_names):
         coco_categories.append({
             "id" : i,
-            "name" : c
+            "name" : c,
+            "keypoints" : []
         })
 
 
@@ -71,7 +72,9 @@ def generate_annotations(image_type = "train"):
                     "image_id" : image_id,
                     "bbox" : bbox,
                     "category_id" : cat_id,
-                    "id" : id
+                    "id" : id,
+                    "iscrowd" : 0,
+                    "segmentation" : {}
                 }
 
                 coco_annotations.append(annotation)

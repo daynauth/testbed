@@ -3,7 +3,7 @@ import glob
 import random
 import shutil
 
-path = 'kitti/data'
+path = 'kitti'
 split = 0.8
 
 if not os.path.isdir(path):
