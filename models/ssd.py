@@ -25,7 +25,7 @@ from torchvision.models.detection import _utils as det_utils
 from torchvision.models.detection.anchor_utils import DefaultBoxGenerator
 
 
-__all__ = ['SSD', 'ssd300_vgg16', 'ssd300_resnet50', 'ssd512_resnet50']
+__all__ = ['ssd300_resnet50', 'ssd300_resnet101', '_resnet_extractor']
 
 model_urls = {
     'ssd300_vgg16_coco': 'https://download.pytorch.org/models/ssd300_vgg16_coco-b556d3b4.pth',
@@ -68,10 +68,6 @@ class SSDFeatureExtractorResNet(nn.Module):
         for m in self.features[-1][0].modules():
             if hasattr(m, 'stride'):
                 m.stride = 1
-
-        backbone_out_channels = self.features[-1][-1].bn3.num_features
-
-        assert backbone_out_channels == self.input_size[0]
 
         extra = nn.ModuleList([
             nn.Sequential(
@@ -187,6 +183,10 @@ def ssd300_resnet(resnet_name: str = "resnet50", pretrained: bool = False, progr
     #     model.load_state_dict(state_dict)
 
     return model   
+
+def ssd300_resnet34(pretrained: bool = False, progress: bool = True, num_classes: int = 91,
+                    pretrained_backbone: bool = True, trainable_backbone_layers: Optional[int] = None, **kwargs: Any):
+    return ssd300_resnet("resnet34", pretrained, progress, num_classes, pretrained_backbone, trainable_backbone_layers)
 
 def ssd300_resnet50(pretrained: bool = False, progress: bool = True, num_classes: int = 91,
                     pretrained_backbone: bool = True, trainable_backbone_layers: Optional[int] = None, **kwargs: Any):

@@ -12,6 +12,7 @@ build/
 develop-eggs/
 saved_models/
 datasets/**/*.png
+datasets/training/
 dist/
 downloads/
 eggs/

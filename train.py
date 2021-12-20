@@ -10,12 +10,12 @@ import datetime
 import presets
 import utils
 
-import torchvision.models as models
+#import torchvision.models as models
 
 from models.ssd import ssd300_resnet50, ssd_resnet50_adapted, ssd_resnet50_adapted_v2, ssd300_resnet101,\
     ssd300_resnet152, ssd300_mobilenet_v2, ssd_frozen
 
-import models.ssd
+import models
 from engine import train_one_epoch, evaluate
 from coco_utils import get_coco, get_coco_kp, get_kitti
 from group_by_aspect_ratio import GroupedBatchSampler, create_aspect_ratio_groups
@@ -134,7 +134,7 @@ def main(args):
         collate_fn=utils.collate_fn)
 
     print("Creating model")
-    model = models.ssd.__dict__[args.model](False, True, num_classes, True)
+    model = models.__dict__[args.model](False, True, num_classes, True)
     model.to(device)
 
     model_without_ddp = model

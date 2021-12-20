@@ -40,6 +40,7 @@ def time_profile(model_name, batch_size):
     return extract_time(table[-2]), extract_time(table[-1])
 
 model_list = [
+    'resnet34',
     'resnet50',
     'mobilenet_v2',
     'mobilenet_v3_large',
