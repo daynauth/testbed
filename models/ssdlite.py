@@ -49,3 +49,20 @@ def ssdlite_resnet50(pretrained: bool = False, progress: bool = True, num_classe
 def ssdlite_resnet34(pretrained: bool = False, progress: bool = True, num_classes: int = 91,
                     pretrained_backbone: bool = True, trainable_backbone_layers: Optional[int] = None, **kwargs: Any):
     return ssdlite_resnet('resnet34', pretrained, progress, num_classes, pretrained_backbone, trainable_backbone_layers, **kwargs)
+
+def frozen_ssdlite_resnet50(pretrained: bool = False, progress: bool = True, num_classes: int = 91,
+                    pretrained_backbone: bool = True, trainable_backbone_layers: Optional[int] = None, **kwargs: Any):
+    size = (320, 320)
+
+    #grab the resnet backbone from retinanet to use as the backbone for ssd
+    retinanet_backbone = models.detection.retinanet_resnet50_fpn(pretrained=True).backbone
+
+    #freeze all the layers before layer 3
+    trainable_backbone_layers = ['layer3', 'layer4']
+
+    for name, parameter in retinanet_backbone.body.named_parameters():
+        if all([not name.startswith(layer) for layer in trainable_backbone_layers]):
+            parameter.requires_grad_(False)
+
+    #get the head and extra layers but not frozen
+

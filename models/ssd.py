@@ -25,7 +25,7 @@ from torchvision.models.detection import _utils as det_utils
 from torchvision.models.detection.anchor_utils import DefaultBoxGenerator
 
 
-__all__ = ['ssd300_resnet50', 'ssd300_resnet101', '_resnet_extractor']
+__all__ = ['ssd300_resnet34', 'ssd300_resnet50', 'ssd300_resnet101', '_resnet_extractor']
 
 model_urls = {
     'ssd300_vgg16_coco': 'https://download.pytorch.org/models/ssd300_vgg16_coco-b556d3b4.pth',

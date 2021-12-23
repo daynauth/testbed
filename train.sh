@@ -9,5 +9,5 @@ python train.py\
     --lr 0.0002\
     --batch-size 16\
     --weight-decay 0.0005\
-    --data-augmentation ssdlite\
-    --model ssdlite_resnet50
+    --data-augmentation ssd\
+    --model ssd300_resnet34\
