@@ -10,4 +10,4 @@ python train.py\
     --batch-size 16\
     --weight-decay 0.0005\
     --data-augmentation ssd\
-    --model ssd300_resnet34\
+    --model ssd300_resnet50\
