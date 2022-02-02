@@ -25,7 +25,17 @@ from torchvision.models.detection import _utils as det_utils
 from torchvision.models.detection.anchor_utils import DefaultBoxGenerator
 
 
-__all__ = ['ssd300_resnet34', 'ssd300_resnet50', 'ssd300_resnet101', '_resnet_extractor', 'ssd300_mobilenet_v3_large']
+__all__ = [
+    'ssd300_resnet34', 
+    'ssd300_resnet50', 
+    'ssd300_resnet101', 
+    '_resnet_extractor', 
+    'ssd300_mobilenet_v3_large',
+    'ssd300_mobilenet_v3_small',
+    'ssd300_mobilenet_v2',
+    'ssd_frozen',
+    'ssd_frozen_mobilenet'
+]
 
 model_urls = {
     'ssd300_vgg16_coco': 'https://download.pytorch.org/models/ssd300_vgg16_coco-b556d3b4.pth',
@@ -603,6 +613,95 @@ def ssd_resnet50_adapted_v2(pretrained: bool = False, progress: bool = True, num
     return model
 
 
+
+
+
+class MobilenetFrozenAdapter(nn.Module):
+    def __init__(self, backbone, extra, out_size):
+        super().__init__()
+
+        self.extra = extra
+
+        #get all the layers up to layer 3
+        self.features = nn.Sequential(*list(backbone.body.children())[:7])
+
+        #gotta figure this part out
+        conv4_block1 = self.features[-1][0]
+        conv4_block1.conv1.stride = (1, 1)
+        conv4_block1.conv2.stride = (1, 1)
+        conv4_block1.downsample[0].stride = (1, 1)
+
+        in_size = self.features[-1][-1].bn3.weight.shape[0]
+
+        self.reducer = nn.Sequential(
+            nn.Conv2d(in_size, out_size, kernel_size = 1, bias = False),
+        )
+
+        _xavier_init(self.reducer)
+
+    def forward(self, x):
+        x = self.features(x)
+        x = self.reducer(x)
+
+        output = [x]
+
+        for block in self.extra:
+            x = block(x)
+            output.append(x)
+
+        return OrderedDict([(str(i), v) for i, v in enumerate(output)])
+
+
+
+
+def ssd_frozen_mobilenet(pretrained: bool = False, progress: bool = True, num_classes: int = 91,
+                    pretrained_backbone: bool = True, trainable_backbone_layers: Optional[int] = None, **kwargs: Any):  
+
+    size = (300, 300)
+
+    ssd_vgg = models.detection.ssd300_vgg16(pretrained=True)
+    ssd_vgg_backbone = ssd_vgg.backbone
+
+    #grab the vgg extra to use in ssd
+    ssd_vgg_extra = ssd_vgg_backbone.extra
+
+    #get the expected output size for the last layer of the vgg backbone
+    conv_layers = [i for i, block in ssd_vgg_backbone.features.named_modules() if type(block) == nn.Conv2d]
+    out_size = ssd_vgg_backbone.features[int(conv_layers[-1])].out_channels
+
+    #grab the resnet backbone from retinanet to use as the backbone for ssd
+    #retinanet_backbone = models.detection.retinanet_resnet50_fpn(pretrained=True).backbone
+    mobilenet_backbone = models.detection.fasterrcnn_mobilenet_v3_large_320_fpn(pretrained=True).backbone
+
+    #freeze all the layers before layer 3
+    trainable_backbone_layers = ['layer3', 'layer4']
+
+    for name, parameter in mobilenet_backbone.body.named_parameters():
+        if all([not name.startswith(layer) for layer in trainable_backbone_layers]):
+            parameter.requires_grad_(False)
+
+    #freeze extra layers
+    for name, parameter in ssd_vgg_extra.named_parameters():
+        parameter.requires_grad_(False)
+
+
+    backbone = MobilenetFrozenAdapter(mobilenet_backbone, ssd_vgg_extra, out_size)
+
+    #reuse the same anchor generator from the ssd model
+    anchor_generator = ssd_vgg.anchor_generator
+
+
+    #don't freeze head. at least not yet.  
+    ssd_vgg_head = ssd_vgg.head
+
+    #freeze head here but add option to not freeze head
+    for name, parameter in ssd_vgg_head.named_parameters():
+        parameter.requires_grad_(False)
+    
+    model = models.detection.SSD(backbone, anchor_generator, size, num_classes, head = ssd_vgg_head, **kwargs)
+
+    return model
+
 class FrozenAdapter(nn.Module):
     def __init__(self, backbone, extra, out_size):
         super().__init__()
@@ -637,6 +736,10 @@ class FrozenAdapter(nn.Module):
             output.append(x)
 
         return OrderedDict([(str(i), v) for i, v in enumerate(output)])
+
+
+
+
 
 def ssd_frozen(pretrained: bool = False, progress: bool = True, num_classes: int = 91,
                     pretrained_backbone: bool = True, trainable_backbone_layers: Optional[int] = None, **kwargs: Any):  
@@ -684,6 +787,3 @@ def ssd_frozen(pretrained: bool = False, progress: bool = True, num_classes: int
     model = models.detection.SSD(backbone, anchor_generator, size, num_classes, head = ssd_vgg_head, **kwargs)
 
     return model
-
-def ssd_mobilenet_v3_large():
-    pass
