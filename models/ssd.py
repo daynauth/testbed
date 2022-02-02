@@ -25,7 +25,7 @@ from torchvision.models.detection import _utils as det_utils
 from torchvision.models.detection.anchor_utils import DefaultBoxGenerator
 
 
-__all__ = ['ssd300_resnet34', 'ssd300_resnet50', 'ssd300_resnet101', '_resnet_extractor']
+__all__ = ['ssd300_resnet34', 'ssd300_resnet50', 'ssd300_resnet101', '_resnet_extractor', 'ssd300_mobilenet_v3_large']
 
 model_urls = {
     'ssd300_vgg16_coco': 'https://download.pytorch.org/models/ssd300_vgg16_coco-b556d3b4.pth',
@@ -202,6 +202,7 @@ def ssd300_resnet152(pretrained: bool = False, progress: bool = True, num_classe
 
 class SSDFeatureExtractorMobileNet(nn.Module):
     def __init__(self, backbone: nn.Module, **kwargs: Any):
+        #print(*backbone[-1])
         super().__init__()
 
         self.features = nn.Sequential(
@@ -262,28 +263,39 @@ def _mobilenet_extractor(backbone_name: str, progress: bool, pretrained: bool, t
                          norm_layer: Callable[..., nn.Module], **kwargs: Any):
     backbone = mobilenet.__dict__[backbone_name](pretrained=pretrained, progress=progress,
                                                  norm_layer=norm_layer, **kwargs).features
-    # if not pretrained:
-    #     # Change the default initialization scheme if not pretrained
-    #     _normal_init(backbone)
 
-    # # Gather the indices of blocks which are strided. These are the locations of C1, ..., Cn-1 blocks.
-    # # The first and last blocks are always included because they are the C0 (conv1) and Cn.
-    # stage_indices = [0] + [i for i, b in enumerate(backbone) if getattr(b, "_is_cn", False)] + [len(backbone) - 1]
-    # num_stages = len(stage_indices)
-
-    # print('stages: ', num_stages)
-    # print(stage_indices[-2])
-    # # find the index of the layer from which we wont freeze
-    # assert 0 <= trainable_layers <= num_stages
-    # freeze_before = num_stages if trainable_layers == 0 else stage_indices[num_stages - trainable_layers]
-
-    # for b in backbone[:freeze_before]:
-    #     for parameter in b.parameters():
-    #         parameter.requires_grad_(False)
-
-
-    #return backbone
     return SSDFeatureExtractorMobileNet(backbone)
+
+def _mobilenetv3_extractor(backbone_name: str, progress: bool, pretrained: bool, trainable_layers: int,
+                         norm_layer: Callable[..., nn.Module], **kwargs: Any):
+
+    #get the mobilenet backbone
+    backbone = mobilenet.__dict__[backbone_name](pretrained=pretrained, progress=progress,
+                                                 norm_layer=norm_layer, **kwargs).features
+
+    if not pretrained:
+        models.detection.ssdlite._normal_init(backbone)
+
+    # Gather the indices of blocks which are strided. These are the locations of C1, ..., Cn-1 blocks.
+    # The first and last blocks are always included because they are the C0 (conv1) and Cn.
+    stage_indices = [0] + [i for i, b in enumerate(backbone) if getattr(b, "_is_cn", False)] + [len(backbone) - 1]
+    num_stages = len(stage_indices)
+
+    # find the index of the layer from which we wont freeze
+    assert 0 <= trainable_layers <= num_stages
+    freeze_before = num_stages if trainable_layers == 0 else stage_indices[num_stages - trainable_layers]
+
+
+    for b in backbone[:freeze_before]:
+        for parameter in b.parameters():
+            parameter.requires_grad_(False)                                            
+    #print(backbone)
+    #print(backbone[-1])
+
+    return models.detection.ssdlite.SSDLiteFeatureExtractorMobileNet(backbone, stage_indices[-2], norm_layer, **kwargs)
+    
+    # return SSDFeatureExtractorMobileNet(backbone)
+
 
 
 def ssd300_mobilenet_v2(pretrained: bool = False, progress: bool = True, num_classes: int = 91,
@@ -293,27 +305,23 @@ def ssd300_mobilenet_v2(pretrained: bool = False, progress: bool = True, num_cla
     if "size" in kwargs:
         warnings.warn("The size of the model is already fixed; ignoring the argument.")
 
-    # trainable_backbone_layers = _validate_trainable_layers(
-    #     pretrained or pretrained_backbone, trainable_backbone_layers, 6, 6)
-
     if pretrained:
         pretrained_backbone = False
 
     # Enable reduced tail if no pretrained backbone is selected
-    # reduce_tail = not pretrained_backbone
 
     if norm_layer is None:
         norm_layer = partial(nn.BatchNorm2d, eps=0.001, momentum=0.03)
 
+    # Enable reduced tail if no pretrained backbone is selected
+    reduce_tail = not pretrained_backbone
+
     backbone = _mobilenet_extractor("mobilenet_v2", progress, pretrained_backbone, trainable_backbone_layers,
                                 norm_layer)
 
-    #print(backbone)
+
     size = (300, 300)
-    # anchor_generator = DefaultBoxGenerator([[2, 3] for _ in range(6)], min_ratio=0.2, max_ratio=0.95)
-    #out_channels = det_utils.retrieve_out_channels(backbone, size)
-    # num_anchors = anchor_generator.num_anchors_per_location()
-    # assert len(out_channels) == len(anchor_generator.aspect_ratios)
+
 
     anchor_generator = DefaultBoxGenerator([[2], [2, 3], [2, 3], [2, 3], [2], [2]],
                                         scales=[0.07, 0.15, 0.33, 0.51, 0.69, 0.87, 1.05],
@@ -321,7 +329,60 @@ def ssd300_mobilenet_v2(pretrained: bool = False, progress: bool = True, num_cla
 
     model = models.detection.SSD(backbone, anchor_generator, size, num_classes, **kwargs)
 
+    #return models.detection.ssdlite.SSDLiteFeatureExtractorMobileNet(model, progress, pretrained_backbone)
     return model
+
+
+def ssd300_mobilenet_v3_large(pretrained: bool = False, progress: bool = True, num_classes: int = 91,
+                                  pretrained_backbone: bool = False, trainable_backbone_layers: Optional[int] = None,
+                                  norm_layer: Optional[Callable[..., nn.Module]] = None,
+                                  **kwargs: Any):
+
+    if "size" in kwargs:
+        warnings.warn("The size of the model is already fixed; ignoring the argument.")
+
+    trainable_backbone_layers = _validate_trainable_layers(
+        pretrained or pretrained_backbone, trainable_backbone_layers, 6, 6)
+
+    if pretrained:
+        pretrained_backbone = False
+
+    # Enable reduced tail if no pretrained backbone is selected
+    reduce_tail = not pretrained_backbone
+
+    # Enable reduced tail if no pretrained backbone is selected
+    if norm_layer is None:
+        norm_layer = partial(nn.BatchNorm2d, eps=0.001, momentum=0.03)
+
+    backbone = _mobilenetv3_extractor("mobilenet_v3_large", progress, pretrained_backbone, trainable_backbone_layers,
+                                norm_layer)
+
+    size = (300, 300)
+
+
+    anchor_generator = DefaultBoxGenerator([[2], [2, 3], [2, 3], [2, 3], [2], [2]],
+                                        scales=[0.07, 0.15, 0.33, 0.51, 0.69, 0.87, 1.05],
+                                        steps=[8, 16, 32, 64, 100, 300])
+
+    out_channels = det_utils.retrieve_out_channels(backbone, size)
+    num_anchors = anchor_generator.num_anchors_per_location()
+    assert len(out_channels) == len(anchor_generator.aspect_ratios)
+
+    # defaults = {
+    #     "score_thresh": 0.001,
+    #     "nms_thresh": 0.55,
+    #     "detections_per_img": 300,
+    #     "topk_candidates": 300,
+    #     # Rescale the input in a way compatible to the backbone:
+    #     # The following mean/std rescale the data from [0, 1] to [-1, -1]
+    #     "image_mean": [0.5, 0.5, 0.5],
+    #     "image_std": [0.5, 0.5, 0.5],
+    # }   
+
+    model = models.detection.SSD(backbone, anchor_generator, size, num_classes, **kwargs)
+
+    return model
+
 
 
 class ResnetAdapter(nn.Module):
@@ -623,3 +684,6 @@ def ssd_frozen(pretrained: bool = False, progress: bool = True, num_classes: int
     model = models.detection.SSD(backbone, anchor_generator, size, num_classes, head = ssd_vgg_head, **kwargs)
 
     return model
+
+def ssd_mobilenet_v3_large():
+    pass

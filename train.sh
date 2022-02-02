@@ -1,13 +1,12 @@
 #lr=0.0026
+#    --data-augmentation retinanet\
 python train.py\
-    --workers 12\
     --data-path /data/datasets/coco\
+    --batch-size 8\
     --dataset coco\
     --epochs 50\
     --lr-steps 32 40\
     --aspect-ratio-group-factor 3\
     --lr 0.0002\
-    --batch-size 16\
     --weight-decay 0.0005\
-    --data-augmentation ssd\
-    --model ssd300_resnet50\
+    --model frozen_retinanet_all\

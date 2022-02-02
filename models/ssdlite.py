@@ -13,7 +13,7 @@ from functools import partial
 from torchvision.models.detection.anchor_utils import DefaultBoxGenerator
 from torchvision.models.detection import _utils as det_utils
 
-__all__ = ['ssdlite_resnet34', 'ssdlite_resnet50', 'frozen_ssdlite_resnet50']
+__all__ = ['ssdlite_resnet34', 'ssdlite_resnet50', 'frozen_ssdlite_resnet50', 'frozen_ssdlite_resnet50_frozen_head']
 
 
 
@@ -131,7 +131,7 @@ class LiteResnetAdapter(nn.Module):
 
 
 def frozen_ssdlite_resnet50(pretrained: bool = False, progress: bool = True, num_classes: int = 91,
-                    pretrained_backbone: bool = True, trainable_backbone_layers: Optional[int] = None, **kwargs: Any):
+                    pretrained_backbone: bool = True, freeze_head: bool = False, trainable_backbone_layers: Optional[int] = None, **kwargs: Any):
     size = (300, 300)
 
     #grab the resnet backbone from retinanet to use as the backbone for ssd
@@ -156,6 +156,10 @@ def frozen_ssdlite_resnet50(pretrained: bool = False, progress: bool = True, num
     for block in head.classification_head.module_list:
         out_channels.append(block[0][0].weight.shape[0])
 
+    #freeze extra layers
+    for name, parameter in extra.named_parameters():
+        parameter.requires_grad_(False)
+
     backbone = LiteResnetAdapter(retinanet_backbone, extra, size, out_channels)
 
     anchor_generator = model.anchor_generator
@@ -174,7 +178,17 @@ def frozen_ssdlite_resnet50(pretrained: bool = False, progress: bool = True, num
 
     kwargs = {**defaults, **kwargs}
 
+
+
+    #freeze head
+    if freeze_head is True:
+        for name, parameter in head.named_parameters():
+            parameter.requires_grad_(False)
+
     return models.detection.SSD(backbone, anchor_generator, size, num_classes, head=head, **kwargs)
 
 
 
+def frozen_ssdlite_resnet50_frozen_head(pretrained: bool = False, progress: bool = True, num_classes: int = 91,
+                    pretrained_backbone: bool = True, trainable_backbone_layers: Optional[int] = None, **kwargs: Any):
+    return frozen_ssdlite_resnet50(pretrained, progress, num_classes, pretrained_backbone, True, trainable_backbone_layers, **kwargs)
