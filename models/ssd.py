@@ -364,6 +364,8 @@ def ssd300_mobilenet_v3_large(pretrained: bool = False, progress: bool = True, n
     if norm_layer is None:
         norm_layer = partial(nn.BatchNorm2d, eps=0.001, momentum=0.03)
 
+    #don't freeze anything as yet
+
     backbone = _mobilenetv3_extractor("mobilenet_v3_large", progress, pretrained_backbone, trainable_backbone_layers,
                                 norm_layer)
 
@@ -378,20 +380,106 @@ def ssd300_mobilenet_v3_large(pretrained: bool = False, progress: bool = True, n
     num_anchors = anchor_generator.num_anchors_per_location()
     assert len(out_channels) == len(anchor_generator.aspect_ratios)
 
-    # defaults = {
-    #     "score_thresh": 0.001,
-    #     "nms_thresh": 0.55,
-    #     "detections_per_img": 300,
-    #     "topk_candidates": 300,
-    #     # Rescale the input in a way compatible to the backbone:
-    #     # The following mean/std rescale the data from [0, 1] to [-1, -1]
-    #     "image_mean": [0.5, 0.5, 0.5],
-    #     "image_std": [0.5, 0.5, 0.5],
-    # }   
+    defaults = {
+        "score_thresh": 0.001,
+        "nms_thresh": 0.55,
+        "detections_per_img": 300,
+        "topk_candidates": 300,
+        # Rescale the input in a way compatible to the backbone:
+        # The following mean/std rescale the data from [0, 1] to [-1, -1]
+        "image_mean": [0.5, 0.5, 0.5],
+        "image_std": [0.5, 0.5, 0.5],
+    }   
 
     model = models.detection.SSD(backbone, anchor_generator, size, num_classes, **kwargs)
 
     return model
+
+
+def ssd300_mobilenet_v2(pretrained: bool = False, progress: bool = True, num_classes: int = 91,
+                                  pretrained_backbone: bool = False, trainable_backbone_layers: Optional[int] = None,
+                                  norm_layer: Optional[Callable[..., nn.Module]] = None,
+                                  **kwargs: Any):
+    if "size" in kwargs:
+        warnings.warn("The size of the model is already fixed; ignoring the argument.")
+
+    if pretrained:
+        pretrained_backbone = False
+
+    # Enable reduced tail if no pretrained backbone is selected
+
+    if norm_layer is None:
+        norm_layer = partial(nn.BatchNorm2d, eps=0.001, momentum=0.03)
+
+    # Enable reduced tail if no pretrained backbone is selected
+    reduce_tail = not pretrained_backbone
+
+    backbone = _mobilenet_extractor("mobilenet_v2", progress, pretrained_backbone, trainable_backbone_layers,
+                                norm_layer)
+
+
+    size = (300, 300)
+
+
+    anchor_generator = DefaultBoxGenerator([[2], [2, 3], [2, 3], [2, 3], [2], [2]],
+                                        scales=[0.07, 0.15, 0.33, 0.51, 0.69, 0.87, 1.05],
+                                        steps=[8, 16, 32, 64, 100, 300])
+
+    model = models.detection.SSD(backbone, anchor_generator, size, num_classes, **kwargs)
+
+    #return models.detection.ssdlite.SSDLiteFeatureExtractorMobileNet(model, progress, pretrained_backbone)
+    return model
+
+
+def ssd300_mobilenet_v3_small(pretrained: bool = False, progress: bool = True, num_classes: int = 91,
+                                  pretrained_backbone: bool = False, trainable_backbone_layers: Optional[int] = None,
+                                  norm_layer: Optional[Callable[..., nn.Module]] = None,
+                                  **kwargs: Any):
+
+    if "size" in kwargs:
+        warnings.warn("The size of the model is already fixed; ignoring the argument.")
+
+    trainable_backbone_layers = _validate_trainable_layers(
+        pretrained or pretrained_backbone, trainable_backbone_layers, 6, 6)
+
+    if pretrained:
+        pretrained_backbone = False
+
+    # Enable reduced tail if no pretrained backbone is selected
+    reduce_tail = not pretrained_backbone
+
+    # Enable reduced tail if no pretrained backbone is selected
+    if norm_layer is None:
+        norm_layer = partial(nn.BatchNorm2d, eps=0.001, momentum=0.03)
+
+    #don't freeze anything as yet
+
+    backbone = _mobilenetv3_extractor("mobilenet_v3_small", progress, pretrained_backbone, trainable_backbone_layers,
+                                norm_layer)
+
+    size = (300, 300)
+
+
+    anchor_generator = DefaultBoxGenerator([[2], [2, 3], [2, 3], [2, 3], [2], [2]],
+                                        scales=[0.07, 0.15, 0.33, 0.51, 0.69, 0.87, 1.05],
+                                        steps=[8, 16, 32, 64, 100, 300])
+
+    out_channels = det_utils.retrieve_out_channels(backbone, size)
+    num_anchors = anchor_generator.num_anchors_per_location()
+    assert len(out_channels) == len(anchor_generator.aspect_ratios)
+
+    defaults = {
+        "score_thresh": 0.001,
+        "nms_thresh": 0.55,
+        "detections_per_img": 300,
+        "topk_candidates": 300,
+        # Rescale the input in a way compatible to the backbone:
+        # The following mean/std rescale the data from [0, 1] to [-1, -1]
+        "image_mean": [0.5, 0.5, 0.5],
+        "image_std": [0.5, 0.5, 0.5],
+    }   
+
+    return models.detection.SSD(backbone, anchor_generator, size, num_classes, **kwargs)
 
 
 
@@ -725,12 +813,15 @@ class FrozenAdapter(nn.Module):
 
         _xavier_init(self.reducer)
 
+    #this is backbone function that does the forward prop.
     def forward(self, x):
-        x = self.features(x)
-        x = self.reducer(x)
+        x = self.features(x) #backbone <--- cached
+
+        x = self.reducer(x) #avtn layer
 
         output = [x]
 
+        #forward prop through the extra layers
         for block in self.extra:
             x = block(x)
             output.append(x)
@@ -746,6 +837,7 @@ def ssd_frozen(pretrained: bool = False, progress: bool = True, num_classes: int
 
     size = (300, 300)
 
+    #we get the backbone from ssd + vgg object detection model
     ssd_vgg = models.detection.ssd300_vgg16(pretrained=True)
     ssd_vgg_backbone = ssd_vgg.backbone
 
@@ -784,6 +876,7 @@ def ssd_frozen(pretrained: bool = False, progress: bool = True, num_classes: int
     for name, parameter in ssd_vgg_head.named_parameters():
         parameter.requires_grad_(False)
     
+    #connect frozen retinanet+resnet50 backbone to frozen ssd+vgg head with adaptive layer
     model = models.detection.SSD(backbone, anchor_generator, size, num_classes, head = ssd_vgg_head, **kwargs)
 
     return model
