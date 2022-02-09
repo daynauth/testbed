@@ -10,7 +10,7 @@ import presets
 
 #import torchvision.models as models
 import models
-from models.ssd import ssd300_resnet50, ssd300_resnet101, ssd300_mobilenet_v2, ssd_frozen, ssd300_mobilenet_v3_large, ssd300_mobilenet_v3_small
+from models.ssd import ssd300_resnet34, ssd300_resnet50, ssd300_resnet101, ssd300_mobilenet_v2, ssd_frozen, ssd300_mobilenet_v3_large, ssd300_mobilenet_v3_small
 from models.retinanet import frozen_retinanet_all
 from models.ssdlite import frozen_ssdlite_resnet50
 from torch import nn, Tensor
@@ -330,6 +330,68 @@ def test_ssd_mobilenetv3_small(input):
     #lsssd300_mobilenet_v2(pretrained=False, progress=True)
     model = ssd300_mobilenet_v3_small(pretrained=False, progress=True)
     model.eval()
-    output = model(input) 
+    output = model(input)
 
-test_ssd_mobilenetv3_small(inputs)
+def test_print():
+    print("Hello World")
+
+
+
+def test_evaluate(checkpoint):
+    from coco_utils import get_coco, get_coco_kp
+    import utils
+    from engine import evaluate
+    from torch.utils.model_zoo import load_url as load_state_dict_from_url
+    
+
+    def get_dataset(name, image_set, transform, data_path):
+        paths = {
+            "coco": (data_path, get_coco, 91),
+            "coco_kp": (data_path, get_coco_kp, 2),
+            "kitti": (data_path, get_kitti, 8)
+        }
+        p, ds_fn, num_classes = paths[name]
+
+        ds = ds_fn(p, image_set=image_set, transforms=transform)
+        return ds, num_classes
+
+    def get_transform(train, data_augmentation):
+        return presets.DetectionPresetTrain(data_augmentation) if train else presets.DetectionPresetEval()
+
+    model = ssd300_resnet34(pretrained=False, progress=True)
+    model_without_ddp = model
+    #checkpoint = torch.load('fused_models/ssd_resnet34.pth', map_location='cpu')
+    model_without_ddp.load_state_dict(checkpoint['model'])
+
+
+    dataset_test, _ = get_dataset('coco', "val", get_transform(False, 'ssd'), '/data/datasets/coco')
+
+    test_sampler = torch.utils.data.SequentialSampler(dataset_test)
+
+    data_loader_test = torch.utils.data.DataLoader(
+        dataset_test, batch_size=1,
+        sampler=test_sampler, num_workers=4,
+        collate_fn=utils.collate_fn)
+    
+    device = torch.device('cuda')
+    model.to(device)
+
+    evaluate(model, data_loader_test, device=device)
+
+def test_file_print(print_fcn, checkpoint):
+    import sys
+
+    print('saving results')
+    original_stdout = sys.stdout
+
+    with open('output.txt', 'w') as f:
+        sys.stdout = f
+        print_fcn(checkpoint)
+        sys.stdout = original_stdout
+
+
+#test_ssd_mobilenetv3_small(inputs)
+
+checkpoint = torch.load('fused_models/ssd_resnet34.pth', map_location='cpu')
+
+test_file_print(test_evaluate, checkpoint)
