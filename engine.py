@@ -12,7 +12,9 @@ import utils
 
 
 
-def train_one_epoch(model, optimizer, data_loader, device, epoch, print_freq):
+
+
+def train_one_epoch(model, optimizer, data_loader, device, epoch, print_freq, writer = None):
     #scaler = torch.cuda.amp.GradScaler()
 
     model.train()
@@ -40,6 +42,10 @@ def train_one_epoch(model, optimizer, data_loader, device, epoch, print_freq):
         losses_reduced = sum(loss for loss in loss_dict_reduced.values())
 
         loss_value = losses_reduced.item()
+
+        if(writer):
+            writer.add_scalar("Loss/train", loss_value, epoch)
+
 
         if not math.isfinite(loss_value):
             print("Loss is {}, stopping training".format(loss_value))

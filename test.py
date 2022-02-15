@@ -358,7 +358,7 @@ def test_evaluate(checkpoint):
     def get_transform(train, data_augmentation):
         return presets.DetectionPresetTrain(data_augmentation) if train else presets.DetectionPresetEval()
 
-    model = ssd300_resnet34(pretrained=False, progress=True)
+    model = ssd_frozen(pretrained=False, progress=True)
     model_without_ddp = model
     #checkpoint = torch.load('fused_models/ssd_resnet34.pth', map_location='cpu')
     model_without_ddp.load_state_dict(checkpoint['model'])
@@ -392,6 +392,6 @@ def test_file_print(print_fcn, checkpoint):
 
 #test_ssd_mobilenetv3_small(inputs)
 
-checkpoint = torch.load('fused_models/ssd_resnet34.pth', map_location='cpu')
+checkpoint = torch.load('model_10.pth', map_location='cpu')
 
 test_file_print(test_evaluate, checkpoint)
