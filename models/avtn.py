@@ -7,6 +7,55 @@ from torch import nn
 
 __all__ = ['ssd300_avtn_retinanet_resnet', 'ssd300_avtn_faster_rcnn_resnet', 'ssd300_avtn_faster_rcnn_mobilenet_v3_large']
 
+def _xavier_init(conv: nn.Module):
+    for layer in conv.modules():
+        if isinstance(layer, nn.Conv2d):
+            torch.nn.init.xavier_uniform_(layer.weight)
+            if layer.bias is not None:
+                torch.nn.init.constant_(layer.bias, 0.0)
+
+
+class ReducedAVTN(nn.Module):
+    def __init__(self, in_channels, out_channels, out_shape, features, extra):
+        super().__init__()
+        self.in_channels = in_channels
+        self.out_channels = out_channels
+        self.extra = extra
+        self.features = nn.Sequential(*list(features.children())[:7])
+        print(self.features)
+
+
+        #gotta figure this part out
+        conv4_block1 = self.features[-1][0]
+        conv4_block1.conv1.stride = (1, 1)
+        conv4_block1.conv2.stride = (1, 1)
+        conv4_block1.downsample[0].stride = (1, 1)
+
+
+        self.in_channels = self.features[-1][-1].bn3.weight.shape[0]
+
+        self.adjust_layer = nn.Sequential(
+            nn.Conv2d(self.in_channels, self.out_channels, 1),
+            nn.BatchNorm2d(self.out_channels),
+            nn.ReLU(inplace=True)
+        )
+
+        _xavier_init(self.adjust_layer)
+
+    def forward(self, x):
+        x = self.features(x) #backbone <--- cached
+        x = self.adjust_layer(x) #avtn layer
+
+        output = [x]
+
+        #forward prop through the extra layers
+        for block in self.extra:
+            x = block(x)
+            output.append(x)
+
+        return OrderedDict([(str(i), v) for i, v in enumerate(output)])
+
+
 class NaiveAVTN(nn.Module):
     def __init__(self, in_channels, out_channels, out_shape, features, extra):
         super().__init__()
@@ -14,7 +63,10 @@ class NaiveAVTN(nn.Module):
         self.out_channels = out_channels
         self.out_shape = out_shape
         self.features = features
+
         self.extra = extra
+
+        
         self.adjust_layer = nn.Sequential(
             nn.Conv2d(self.in_channels, self.out_channels, 1),
             nn.BatchNorm2d(self.out_channels),
@@ -70,7 +122,8 @@ def _ssd_avtn(features, ssd, pretrained: bool = False, progress: bool = True, nu
 
     in_channel, out_channel, output_shape = calculate_params(size, ssd.backbone.features, features)
 
-    backbone = NaiveAVTN(in_channel, out_channel, output_shape, features, extra_layers)
+    #backbone = NaiveAVTN(in_channel, out_channel, output_shape, features, extra_layers)
+    backbone = ReducedAVTN(in_channel, out_channel, output_shape, features, extra_layers)
     return torchvision.models.detection.SSD(backbone, anchor_generator, size, num_classes, head = head)
 
 
@@ -105,11 +158,11 @@ def test(model):
 model = ssd300_avtn_retinanet_resnet(False, True, 91, True)
 test(model)
 
-model = ssd300_avtn_faster_rcnn_mobilenet_v3_large(False, True, 91, True)
-test(model)
+# model = ssd300_avtn_faster_rcnn_mobilenet_v3_large(False, True, 91, True)
+# test(model)
 
-model = ssd300_avtn_faster_rcnn_resnet(False, True, 91, True)
-test(model)
+# model = ssd300_avtn_faster_rcnn_resnet(False, True, 91, True)
+# test(model)
 
 #model = ssdlite300_avtn_retinanet_resnet(False, True, 91, True)
 #print(model)
