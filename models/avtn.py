@@ -76,7 +76,7 @@ class ReducedAVTN(nn.Module):
         self.in_channels = self.features[-1][-1].bn3.weight.shape[0]
 
         self.adjust_layer = nn.Sequential(
-            nn.Conv2d(self.in_channels, self.out_channels, 1),
+            nn.Conv2d(self.in_channels, self.out_channels, 1, bias=False),
             nn.BatchNorm2d(self.out_channels),
             nn.ReLU(inplace=True)
         )
