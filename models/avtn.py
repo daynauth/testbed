@@ -22,7 +22,7 @@ class ReducedAVTN2(nn.Module):
         self.out_channels = out_channels
         self.extra = extra
         self.features = nn.Sequential(*list(features.children())[:7])
-        print(features)
+        
 
 
         #gotta figure this part out
@@ -31,11 +31,16 @@ class ReducedAVTN2(nn.Module):
         conv4_block1.conv2.stride = (1, 1)
         conv4_block1.downsample[0].stride = (1, 1)
 
+        print(self.features[-1])
+
 
         self.in_channels = self.features[-1][-1].bn3.weight.shape[0]
 
         self.adjust_layer = nn.Sequential(
-            nn.Conv2d(self.in_channels, self.out_channels, 1),
+            nn.Conv2d(self.in_channels, 512, 1),
+            nn.BatchNorm2d(512),
+            nn.ReLU(inplace=True),
+            nn.Conv2d(512, self.out_channels, kernel_size=3, stride=1, padding=1, bias=False),
             nn.BatchNorm2d(self.out_channels),
             nn.ReLU(inplace=True)
         )
@@ -63,7 +68,7 @@ class ReducedAVTN(nn.Module):
         self.out_channels = out_channels
         self.extra = extra
         self.features = nn.Sequential(*list(features.children())[:7])
-        print(self.features)
+
 
 
         #gotta figure this part out
@@ -77,8 +82,8 @@ class ReducedAVTN(nn.Module):
 
         self.adjust_layer = nn.Sequential(
             nn.Conv2d(self.in_channels, self.out_channels, 1, bias=False),
-            nn.BatchNorm2d(self.out_channels),
-            nn.ReLU(inplace=True)
+            #nn.BatchNorm2d(self.out_channels),
+            #nn.ReLU(inplace=True)
         )
 
         _xavier_init(self.adjust_layer)
@@ -152,8 +157,17 @@ def _ssd_avtn(features, ssd, pretrained: bool = False, progress: bool = True, nu
     anchor_generator = ssd.anchor_generator
     head = ssd.head
 
+
+    #freeze all the layers before layer 3
+    trainable_backbone_layers = ['layer3', 'layer4']
+
     for name, parameter in features.named_parameters():
-        parameter.requires_grad_(False)
+        if all([not name.startswith(layer) for layer in trainable_backbone_layers]):
+            parameter.requires_grad_(False)
+
+
+    # for name, parameter in features.named_parameters():
+    #     parameter.requires_grad_(False)
 
     for name, parameter in extra_layers.named_parameters():
         parameter.requires_grad_(False)
@@ -188,7 +202,27 @@ def ssd300_avtn_faster_rcnn_mobilenet_v3_large(pretrained: bool = False, progres
 #     ssd = torchvision.models.detection.ssdlite320_mobilenet_v3_large(pretrained=True)
 #     return _ssd_avtn(backbone, ssd, False, True, 91, True)
 
+def new_avtn():
+    backbone = torchvision.models.detection.retinanet_resnet50_fpn(pretrained=True).backbone.body
+    ssd = torchvision.models.detection.ssd300_vgg16(pretrained=True)
 
+    print(backbone)
+
+    #first lets get the output of the backbone
+    inputs = torch.rand(1, 3, 300, 300)
+
+    backbone_output = backbone(inputs)
+
+    for key, values in backbone_output.items():
+        print(values.shape)
+
+
+    ssd.eval()
+    ssd_output = ssd.backbone(inputs)
+
+    print('ssd output')
+    for key, values in ssd_output.items():
+        print(values.shape)
 
 def test(model):
     inputs = torch.rand(1, 3, 300, 300)
@@ -197,7 +231,7 @@ def test(model):
 
 
 model = ssd300_avtn_retinanet_resnet(False, True, 91, True)
-test(model)
+#test(model)
 
 # model = ssd300_avtn_faster_rcnn_mobilenet_v3_large(False, True, 91, True)
 # test(model)
@@ -208,3 +242,5 @@ test(model)
 #model = ssdlite300_avtn_retinanet_resnet(False, True, 91, True)
 #print(model)
 #test(model)
+
+#new_avtn()
