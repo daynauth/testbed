@@ -11,6 +11,7 @@ import presets
 #import torchvision.models as models
 import models
 from models.ssd import ssd300_resnet34, ssd300_resnet50, ssd300_resnet101, ssd300_mobilenet_v2, ssd_frozen, ssd300_mobilenet_v3_large, ssd300_mobilenet_v3_small
+from models.avtn import ssd300_avtn_faster_rcnn_mobilenet_v3_large, ssd300_avtn_retinanet_resnet, ssd300_avtn_faster_rcnn_resnet
 from models.retinanet import frozen_retinanet_all
 from models.ssdlite import frozen_ssdlite_resnet50
 from torch import nn, Tensor
@@ -358,7 +359,10 @@ def test_evaluate(checkpoint):
     def get_transform(train, data_augmentation):
         return presets.DetectionPresetTrain(data_augmentation) if train else presets.DetectionPresetEval()
 
-    model = ssd_frozen(pretrained=False, progress=True)
+    #model = ssd300_avtn_retinanet_resnet()
+    model = torchvision.models.detection.ssd300_vgg16()
+    #model = ssd300_avtn_faster_rcnn_mobilenet_v3_large()
+    #model = ssd_frozen(pretrained=False, progress=True)
     model_without_ddp = model
     #checkpoint = torch.load('fused_models/ssd_resnet34.pth', map_location='cpu')
     model_without_ddp.load_state_dict(checkpoint['model'])
@@ -373,7 +377,7 @@ def test_evaluate(checkpoint):
         sampler=test_sampler, num_workers=4,
         collate_fn=utils.collate_fn)
     
-    device = torch.device('cuda')
+    device = torch.device("cpu")
     model.to(device)
 
     evaluate(model, data_loader_test, device=device)
@@ -392,6 +396,6 @@ def test_file_print(print_fcn, checkpoint):
 
 #test_ssd_mobilenetv3_small(inputs)
 
-checkpoint = torch.load('model_10.pth', map_location='cpu')
+checkpoint = torch.load('temp.pth', map_location='cpu')
 
 test_file_print(test_evaluate, checkpoint)
