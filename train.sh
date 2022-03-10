@@ -1,3 +1,4 @@
+#!/bin/bash
 #lr=0.0026
 #    --data-augmentation retinanet\
 python train.py\

@@ -260,6 +260,57 @@ class CocoDetection(torchvision.datasets.CocoDetection):
             img, target = self._transforms(img, target)
         return img, target
 
+# START OF MODICIATION ===============================================
+def get_coco_cache(root, image_set, transforms, mode='instances'):
+    '''
+    Same as get_coco, for caching images. 
+    Modificaiton: dataset.__getitem__ also return image indexing.
+    '''
+    anno_file_template = "{}_{}2017.json"
+    PATHS = {
+        "train": ("train2017", os.path.join("annotations", anno_file_template.format(mode, "train"))),
+        "val": ("val2017", os.path.join("annotations", anno_file_template.format(mode, "val"))),
+    }
+
+    t = [ConvertCocoPolysToMask()]
+
+    if transforms is not None:
+        t.append(transforms)
+    transforms = T.Compose(t)
+
+    img_folder, ann_file = PATHS[image_set]
+    img_folder = os.path.join(root, img_folder)
+    ann_file = os.path.join(root, ann_file)
+
+    dataset = CocoDetectionCache(img_folder, ann_file, transforms=transforms)
+    
+
+    if image_set == "train":
+        dataset = _coco_remove_images_without_annotations(dataset)
+
+    return dataset
+
+
+class CocoDetectionCache(torchvision.datasets.CocoDetection):
+    '''
+    Same as get CocoDetection, except __getitem__ also return image index.
+    For caching purposes.
+    '''
+    def __init__(self, img_folder, ann_file, transforms):
+        super(CocoDetectionCache, self).__init__(img_folder, ann_file)
+        self._transforms = transforms
+
+    def __getitem__(self, idx):
+        img, target = super(CocoDetectionCache, self).__getitem__(idx)
+
+        image_id = self.ids[idx]
+        target = dict(image_id=image_id, annotations=target)
+        if self._transforms is not None:
+            img, target = self._transforms(img, target)
+        return img, target, idx
+
+# END OF MODIFICATION ================================================
+
 def get_kitti(root, image_set, transforms):
     anno_file_template = "instances_{}.json"
     PATHS = {

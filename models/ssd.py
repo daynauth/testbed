@@ -31,10 +31,15 @@ __all__ = [
     'ssd300_resnet101', 
     '_resnet_extractor', 
     'ssd300_mobilenet_v3_large',
-    'ssd300_mobilenet_v3_small',
+    #'ssd300_mobilenet_v3_small',
     'ssd300_mobilenet_v2',
     'ssd_frozen',
-    'ssd_frozen_mobilenet'
+    'ssd_frozen_mobilenet',
+    # new stuff=======================
+    'cache_mobilenet_v3',
+    'cache_mobilenet_v3_faster_rcnn',
+    'cache_mobilenet_v2',
+    'cache_resnet',
 ]
 
 model_urls = {
@@ -613,9 +618,6 @@ def ssd_resnet50_adapted_v2(pretrained: bool = False, progress: bool = True, num
     return model
 
 
-
-
-
 class MobilenetFrozenAdapter(nn.Module):
     def __init__(self, backbone, extra, out_size):
         super().__init__()
@@ -652,6 +654,96 @@ class MobilenetFrozenAdapter(nn.Module):
         return OrderedDict([(str(i), v) for i, v in enumerate(output)])
 
 
+#####################################################################################
+# begin of modification
+
+# for mobilenet v3
+def cache_mobilenet_v3(backbone_name, norm_layer=None):
+    '''backbone for mobilenet_v3'''
+    if norm_layer is None:
+        norm_layer = partial(nn.BatchNorm2d, eps=0.001, momentum=0.03)
+    backbone = mobilenet.__dict__[backbone_name](pretrained=True, progress=True,
+                                                 norm_layer=norm_layer).features
+    model = CachingMobileNetV3(backbone)
+    return model
+
+
+class CachingMobileNetV3(nn.Module):
+    def __init__(self, backbone):
+        # TODO  Fix backbone with self.features
+        super().__init__()
+        #get all the layers up to layer 3
+        self.features = nn.Sequential(*list(backbone.body.children())[:7])
+
+    def forward(self, x):
+        return self.features(x)
+
+
+# for mobilenet v3 large from fasterrcnn
+def cache_mobilenet_v3_faster_rcnn():
+    '''backbone for mobilenet_v3'''
+    backbone = models.detection.fasterrcnn_mobilenet_v3_large_320_fpn(pretrained=True).backbone
+    model = CachingMobileNetV3LargeFRCNN(backbone)
+    return model
+
+
+class CachingMobileNetV3LargeFRCNN(nn.Module):
+    def __init__(self, backbone):
+        super().__init__()
+        self.features = nn.Sequential(*list(backbone.body.children())[:7])
+
+    def forward(self, x):
+        return self.features(x)
+
+
+# for mobilenet v2
+def cache_mobilenet_v2(norm_layer=None):
+    '''backbone for mobilenet_v2'''
+    if norm_layer is None:
+        norm_layer = partial(nn.BatchNorm2d, eps=0.001, momentum=0.03)
+    backbone = mobilenet.__dict__["mobilenet_v2"](
+                                                pretrained=True,
+                                                progress=True,
+                                                norm_layer=norm_layer).features
+    model = CachingMobileNetV2(backbone)
+    return model
+
+
+class CachingMobileNetV2(nn.Module):
+    '''
+    Consist of only the backbone layer for ssd for caching purposes
+    '''
+    def __init__(self, backbone):
+        super().__init__()
+        self.features = backbone
+
+    def forward(self, x):
+        return self.features(x)
+
+# for resnet
+def cache_resnet(resnet_name):
+    backbone = resnet.__dict__[resnet_name](pretrained=True)
+    model = CachingResNet(backbone)
+    return model
+
+class CachingResNet(nn.Module):
+    def __init__(self, backbone):
+        super().__init__()
+        self.features = nn.Sequential(
+            backbone.conv1,
+            backbone.bn1,
+            backbone.relu,
+            backbone.maxpool,
+            backbone.layer1,
+            backbone.layer2,
+            backbone.layer3
+        )
+
+    def forward(self, x):
+        return self.features(x)
+
+# end of modification
+##########################################################################################################
 
 
 def ssd_frozen_mobilenet(pretrained: bool = False, progress: bool = True, num_classes: int = 91,
@@ -736,8 +828,6 @@ class FrozenAdapter(nn.Module):
             output.append(x)
 
         return OrderedDict([(str(i), v) for i, v in enumerate(output)])
-
-
 
 
 
