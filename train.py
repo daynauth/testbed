@@ -9,11 +9,17 @@ import datetime
 
 import presets
 import utils
+from pathlib import Path
+
+from torch.utils.tensorboard import SummaryWriter
+writer = SummaryWriter()
+
 
 #import torchvision.models as models
 
 from models.ssd import ssd300_resnet50, ssd_resnet50_adapted, ssd_resnet50_adapted_v2, ssd300_resnet101,\
     ssd300_resnet152, ssd300_mobilenet_v2, ssd_frozen
+
 
 import models
 from engine import train_one_epoch, evaluate
@@ -37,6 +43,18 @@ def get_dataset(name, image_set, transform, data_path):
 
 def get_transform(train, data_augmentation):
     return presets.DetectionPresetTrain(data_augmentation) if train else presets.DetectionPresetEval()
+    
+def file_print(evaluate, model, data_loader_test, device, epoch, output_dir):
+    import sys
+
+    print('saving results')
+    original_stdout = sys.stdout
+    (Path(output_dir)/'logs').mkdir(parents=True, exist_ok=True)
+    output = os.path.join(output_dir, 'logs', 'output' + str(epoch) + '.txt')
+    with open(output, 'w') as f:
+        sys.stdout = f
+        evaluate(model, data_loader_test, device=device)
+        sys.stdout = original_stdout
 
 def get_args_parser(add_help=True):
     import argparse
@@ -100,6 +118,7 @@ def get_args_parser(add_help=True):
                         help='number of distributed processes')
     parser.add_argument('--dist-url', default='env://', help='url used to set up distributed training')
 
+    parser.add_argument('--log-epochs', default=5, type=int, help='specific which how often to evalute and store logs file')
     return parser
 
 def main(args):
@@ -108,10 +127,11 @@ def main(args):
 
     # Data Loading code
     print('loading data')
-
+    
     dataset, num_classes = get_dataset(args.dataset, "train", get_transform(True, args.data_augmentation), args.data_path)
+    
     dataset_test, _ = get_dataset(args.dataset, "val", get_transform(False, args.data_augmentation), args.data_path)
-
+    
     print('creating data loaders')
     train_sampler = torch.utils.data.RandomSampler(dataset)
     test_sampler = torch.utils.data.SequentialSampler(dataset_test)
@@ -126,7 +146,7 @@ def main(args):
     data_loader = torch.utils.data.DataLoader(
         dataset, batch_sampler=train_batch_sampler, num_workers=args.workers,
         collate_fn=utils.collate_fn, pin_memory = True)
-
+    
 
     data_loader_test = torch.utils.data.DataLoader(
         dataset_test, batch_size=1,
@@ -135,6 +155,7 @@ def main(args):
 
     print("Creating model")
     model = models.__dict__[args.model](False, True, num_classes, True)
+
     model.to(device)
 
     model_without_ddp = model
@@ -162,10 +183,12 @@ def main(args):
 
     print("Start training")
     start_time = time.time()
+    if args.output_dir:
+        Path(args.output_dir).mkdir(parents=True, exist_ok=True)
     for epoch in range(args.start_epoch, args.epochs):
         # if args.distributed:
         #     train_sampler.set_epoch(epoch)
-        train_one_epoch(model, optimizer, data_loader, device, epoch, args.print_freq)
+        train_one_epoch(model, optimizer, data_loader, device, epoch, args.print_freq, writer)
         lr_scheduler.step()
         if args.output_dir:
             checkpoint = {
@@ -182,10 +205,12 @@ def main(args):
                 checkpoint,
                 os.path.join(args.output_dir, 'checkpoint.pth'))
 
-        # evaluate after every 10 epoch or at the final epoch
-        if (epoch + 1) % 10 == 0 or (epoch + 1) == args.epochs:
-            evaluate(model, data_loader_test, device=device)
+        # evaluate after every 5 epoch or at the final epoch
+        if (epoch + 1) % args.log_epochs == 0 or (epoch + 1) == args.epochs:
+            file_print(evaluate, model, data_loader_test, device, epoch, args.output_dir)
+            #evaluate(model, data_loader_test, device=device)
 
+    writer.flush()
     total_time = time.time() - start_time
     total_time_str = str(datetime.timedelta(seconds=int(total_time)))
     print('Training time {}'.format(total_time_str))

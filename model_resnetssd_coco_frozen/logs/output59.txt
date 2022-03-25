@@ -1,0 +1,68 @@
+Test:  [   0/5000]  eta: 0:25:56  model_time: 0.0258 (0.0258)  evaluator_time: 0.0140 (0.0140)  time: 0.3114  data: 0.2708  max mem: 10368
+Test:  [ 100/5000]  eta: 0:03:00  model_time: 0.0212 (0.0226)  evaluator_time: 0.0075 (0.0090)  time: 0.0362  data: 0.0020  max mem: 10368
+Test:  [ 200/5000]  eta: 0:02:49  model_time: 0.0210 (0.0226)  evaluator_time: 0.0065 (0.0088)  time: 0.0341  data: 0.0019  max mem: 10368
+Test:  [ 300/5000]  eta: 0:02:42  model_time: 0.0205 (0.0224)  evaluator_time: 0.0071 (0.0087)  time: 0.0356  data: 0.0019  max mem: 10368
+Test:  [ 400/5000]  eta: 0:02:37  model_time: 0.0204 (0.0224)  evaluator_time: 0.0067 (0.0087)  time: 0.0315  data: 0.0019  max mem: 10368
+Test:  [ 500/5000]  eta: 0:02:33  model_time: 0.0225 (0.0224)  evaluator_time: 0.0069 (0.0086)  time: 0.0362  data: 0.0020  max mem: 10368
+Test:  [ 600/5000]  eta: 0:02:30  model_time: 0.0201 (0.0224)  evaluator_time: 0.0072 (0.0088)  time: 0.0327  data: 0.0019  max mem: 10368
+Test:  [ 700/5000]  eta: 0:02:26  model_time: 0.0196 (0.0223)  evaluator_time: 0.0062 (0.0088)  time: 0.0297  data: 0.0019  max mem: 10368
+Test:  [ 800/5000]  eta: 0:02:22  model_time: 0.0246 (0.0222)  evaluator_time: 0.0080 (0.0088)  time: 0.0360  data: 0.0018  max mem: 10368
+Test:  [ 900/5000]  eta: 0:02:18  model_time: 0.0197 (0.0221)  evaluator_time: 0.0073 (0.0088)  time: 0.0337  data: 0.0018  max mem: 10368
+Test:  [1000/5000]  eta: 0:02:14  model_time: 0.0195 (0.0221)  evaluator_time: 0.0058 (0.0087)  time: 0.0302  data: 0.0018  max mem: 10368
+Test:  [1100/5000]  eta: 0:02:10  model_time: 0.0197 (0.0220)  evaluator_time: 0.0072 (0.0087)  time: 0.0331  data: 0.0018  max mem: 10368
+Test:  [1200/5000]  eta: 0:02:07  model_time: 0.0199 (0.0220)  evaluator_time: 0.0089 (0.0087)  time: 0.0341  data: 0.0018  max mem: 10368
+Test:  [1300/5000]  eta: 0:02:04  model_time: 0.0196 (0.0220)  evaluator_time: 0.0063 (0.0088)  time: 0.0319  data: 0.0019  max mem: 10368
+Test:  [1400/5000]  eta: 0:02:00  model_time: 0.0199 (0.0219)  evaluator_time: 0.0071 (0.0088)  time: 0.0348  data: 0.0019  max mem: 10368
+Test:  [1500/5000]  eta: 0:01:57  model_time: 0.0197 (0.0219)  evaluator_time: 0.0062 (0.0088)  time: 0.0327  data: 0.0019  max mem: 10368
+Test:  [1600/5000]  eta: 0:01:53  model_time: 0.0195 (0.0219)  evaluator_time: 0.0081 (0.0088)  time: 0.0344  data: 0.0019  max mem: 10368
+Test:  [1700/5000]  eta: 0:01:50  model_time: 0.0196 (0.0219)  evaluator_time: 0.0062 (0.0088)  time: 0.0332  data: 0.0019  max mem: 10368
+Test:  [1800/5000]  eta: 0:01:46  model_time: 0.0196 (0.0219)  evaluator_time: 0.0069 (0.0088)  time: 0.0308  data: 0.0018  max mem: 10368
+Test:  [1900/5000]  eta: 0:01:43  model_time: 0.0198 (0.0218)  evaluator_time: 0.0049 (0.0088)  time: 0.0311  data: 0.0019  max mem: 10368
+Test:  [2000/5000]  eta: 0:01:39  model_time: 0.0197 (0.0218)  evaluator_time: 0.0066 (0.0088)  time: 0.0324  data: 0.0018  max mem: 10368
+Test:  [2100/5000]  eta: 0:01:36  model_time: 0.0196 (0.0218)  evaluator_time: 0.0072 (0.0088)  time: 0.0337  data: 0.0018  max mem: 10368
+Test:  [2200/5000]  eta: 0:01:32  model_time: 0.0195 (0.0218)  evaluator_time: 0.0065 (0.0087)  time: 0.0323  data: 0.0019  max mem: 10368
+Test:  [2300/5000]  eta: 0:01:29  model_time: 0.0198 (0.0218)  evaluator_time: 0.0053 (0.0087)  time: 0.0307  data: 0.0019  max mem: 10368
+Test:  [2400/5000]  eta: 0:01:26  model_time: 0.0199 (0.0218)  evaluator_time: 0.0084 (0.0087)  time: 0.0345  data: 0.0018  max mem: 10368
+Test:  [2500/5000]  eta: 0:01:23  model_time: 0.0211 (0.0218)  evaluator_time: 0.0068 (0.0087)  time: 0.0340  data: 0.0019  max mem: 10368
+Test:  [2600/5000]  eta: 0:01:19  model_time: 0.0200 (0.0219)  evaluator_time: 0.0062 (0.0087)  time: 0.0336  data: 0.0019  max mem: 10368
+Test:  [2700/5000]  eta: 0:01:16  model_time: 0.0206 (0.0219)  evaluator_time: 0.0061 (0.0088)  time: 0.0316  data: 0.0019  max mem: 10368
+Test:  [2800/5000]  eta: 0:01:13  model_time: 0.0211 (0.0220)  evaluator_time: 0.0064 (0.0088)  time: 0.0353  data: 0.0020  max mem: 10368
+Test:  [2900/5000]  eta: 0:01:11  model_time: 0.0206 (0.0220)  evaluator_time: 0.0075 (0.0092)  time: 0.0334  data: 0.0019  max mem: 10368
+Test:  [3000/5000]  eta: 0:01:07  model_time: 0.0206 (0.0220)  evaluator_time: 0.0065 (0.0092)  time: 0.0327  data: 0.0019  max mem: 10368
+Test:  [3100/5000]  eta: 0:01:04  model_time: 0.0204 (0.0220)  evaluator_time: 0.0058 (0.0091)  time: 0.0327  data: 0.0019  max mem: 10368
+Test:  [3200/5000]  eta: 0:01:00  model_time: 0.0207 (0.0220)  evaluator_time: 0.0074 (0.0091)  time: 0.0322  data: 0.0019  max mem: 10368
+Test:  [3300/5000]  eta: 0:00:57  model_time: 0.0209 (0.0221)  evaluator_time: 0.0063 (0.0091)  time: 0.0359  data: 0.0020  max mem: 10368
+Test:  [3400/5000]  eta: 0:00:54  model_time: 0.0207 (0.0221)  evaluator_time: 0.0066 (0.0091)  time: 0.0321  data: 0.0019  max mem: 10368
+Test:  [3500/5000]  eta: 0:00:50  model_time: 0.0200 (0.0221)  evaluator_time: 0.0066 (0.0091)  time: 0.0318  data: 0.0018  max mem: 10368
+Test:  [3600/5000]  eta: 0:00:47  model_time: 0.0200 (0.0221)  evaluator_time: 0.0071 (0.0091)  time: 0.0334  data: 0.0019  max mem: 10368
+Test:  [3700/5000]  eta: 0:00:43  model_time: 0.0198 (0.0221)  evaluator_time: 0.0069 (0.0091)  time: 0.0337  data: 0.0019  max mem: 10368
+Test:  [3800/5000]  eta: 0:00:40  model_time: 0.0201 (0.0221)  evaluator_time: 0.0104 (0.0091)  time: 0.0357  data: 0.0018  max mem: 10368
+Test:  [3900/5000]  eta: 0:00:37  model_time: 0.0196 (0.0221)  evaluator_time: 0.0060 (0.0091)  time: 0.0306  data: 0.0019  max mem: 10368
+Test:  [4000/5000]  eta: 0:00:33  model_time: 0.0197 (0.0221)  evaluator_time: 0.0061 (0.0090)  time: 0.0314  data: 0.0018  max mem: 10368
+Test:  [4100/5000]  eta: 0:00:30  model_time: 0.0198 (0.0221)  evaluator_time: 0.0070 (0.0091)  time: 0.0334  data: 0.0019  max mem: 10368
+Test:  [4200/5000]  eta: 0:00:26  model_time: 0.0197 (0.0221)  evaluator_time: 0.0071 (0.0091)  time: 0.0321  data: 0.0019  max mem: 10368
+Test:  [4300/5000]  eta: 0:00:23  model_time: 0.0197 (0.0221)  evaluator_time: 0.0075 (0.0090)  time: 0.0331  data: 0.0018  max mem: 10368
+Test:  [4400/5000]  eta: 0:00:20  model_time: 0.0198 (0.0220)  evaluator_time: 0.0080 (0.0090)  time: 0.0350  data: 0.0018  max mem: 10368
+Test:  [4500/5000]  eta: 0:00:16  model_time: 0.0201 (0.0220)  evaluator_time: 0.0064 (0.0090)  time: 0.0356  data: 0.0019  max mem: 10368
+Test:  [4600/5000]  eta: 0:00:13  model_time: 0.0194 (0.0220)  evaluator_time: 0.0069 (0.0090)  time: 0.0312  data: 0.0019  max mem: 10368
+Test:  [4700/5000]  eta: 0:00:10  model_time: 0.0197 (0.0220)  evaluator_time: 0.0065 (0.0090)  time: 0.0327  data: 0.0018  max mem: 10368
+Test:  [4800/5000]  eta: 0:00:06  model_time: 0.0194 (0.0220)  evaluator_time: 0.0071 (0.0090)  time: 0.0315  data: 0.0018  max mem: 10368
+Test:  [4900/5000]  eta: 0:00:03  model_time: 0.0196 (0.0220)  evaluator_time: 0.0083 (0.0089)  time: 0.0330  data: 0.0018  max mem: 10368
+Test:  [4999/5000]  eta: 0:00:00  model_time: 0.0191 (0.0220)  evaluator_time: 0.0061 (0.0089)  time: 0.0309  data: 0.0018  max mem: 10368
+Test: Total time: 0:02:47 (0.0336 s / it)
+Averaged stats: model_time: 0.0191 (0.0220)  evaluator_time: 0.0061 (0.0089)
+Accumulating evaluation results...
+DONE (t=7.70s).
+IoU metric: bbox
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area=   all | maxDets=100 ] = 0.176
+ Average Precision  (AP) @[ IoU=0.50      | area=   all | maxDets=100 ] = 0.321
+ Average Precision  (AP) @[ IoU=0.75      | area=   all | maxDets=100 ] = 0.173
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area= small | maxDets=100 ] = 0.023
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area=medium | maxDets=100 ] = 0.177
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area= large | maxDets=100 ] = 0.320
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets=  1 ] = 0.190
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets= 10 ] = 0.279
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets=100 ] = 0.296
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area= small | maxDets=100 ] = 0.052
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=medium | maxDets=100 ] = 0.323
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area= large | maxDets=100 ] = 0.503
