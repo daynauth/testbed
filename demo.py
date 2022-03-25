@@ -64,7 +64,7 @@ class TinyCoco:
 
         self.cat : dict[int, str] = dict([(c['id'], c['name']) for c in cat])
 
-def list_infer(model1 : nn.Module, model2 : nn.Module, image_list: List[ndarray]) -> List[Tuple]:
+def list_infer(model1 : nn.Module, model2 : nn.Module, image_list: List[ndarray]) -> List[Tuple[Tensor, Tensor]]:
     model1.eval()
     model2.eval()
 
@@ -104,12 +104,15 @@ def get_args_parser(add_help=True):
     parser.add_argument('--model2', default='retinanet_resnet50_fpn', help='model')
     parser.add_argument('--n', default=5, type=int, help='number of images to test')
     parser.add_argument('--path', default='/data/dataset/coco', help = 'path to your dataset')
+    parser.add_argument('--random', action='store_true')
+
 
     return parser
 
 
 if __name__ == "__main__":
     args = get_args_parser().parse_args()
+
 
     model1 = models.__dict__[args.model1](pretrained = True)
     model2 = models.__dict__[args.model2](pretrained = True)
@@ -118,7 +121,7 @@ if __name__ == "__main__":
 
     dataset = TinyCoco(args.path)
     categories = dataset.cat
-    image_list = get_images(num_images, dataset)
+    image_list = get_images(num_images, dataset, args.random)
     tensor_list = transforms(image_list)
     output = list_infer(model1, model2, tensor_list)
 
