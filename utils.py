@@ -9,6 +9,9 @@ import torch.distributed as dist
 import errno
 import os
 
+from numpy import ndarray
+from typing import Union, Tuple, List, Dict
+import cv2
 
 class SmoothedValue(object):
     """Track a series of values and provide access to smoothed values over a
@@ -322,3 +325,40 @@ def init_distributed_mode(args):
                                          world_size=args.world_size, rank=args.rank)
     torch.distributed.barrier()
     setup_for_distributed(args.rank == 0)
+
+
+
+ColorConstants = [
+    (202,255,112),
+    (255,140,0),
+    (104,34,139),
+    (233,150,122),
+    (151,255,255),
+    (0,206,209),
+    (255,20,147),
+    (0,191,255),
+    (30,144,255),
+    (255,48,48),
+    (255,125,64),
+    (255,193,37)
+]
+
+def get_color(id: int) -> Tuple[int, int, int]:
+    return ColorConstants[id % len(ColorConstants)]
+
+
+def to_int(box: Tuple[float, float, float, float]) -> Tuple[int, int, int, int]:
+    return (int(box[0]), int(box[1]), int(box[2]), int(box[3]))
+
+def draw_bounding_boxes(image: ndarray, outputs, cat) -> ndarray:
+    image = image.copy()
+    keep = outputs['scores'] > 0.5
+    boxes = outputs['boxes'][keep].tolist()
+    labels = outputs['labels'][keep].tolist()
+
+    for i, box in enumerate(boxes):
+        x1, y1, x2, y2 = to_int(box)
+        cv2.rectangle(image,(x1,y1),(x2,y2),get_color(labels[i]),2)
+        cv2.putText(image, cat[labels[i]], (x1, y1-10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, get_color(labels[i]), 2)
+
+    return image
