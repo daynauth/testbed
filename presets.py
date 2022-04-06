@@ -22,6 +22,11 @@ class DetectionPresetTrain:
                 T.RandomHorizontalFlip(p=hflip_prob),
                 T.ToTensor(),
             ])
+        elif data_augmentation == 'cache':
+            # for caching, no data aug
+            self.transforms = T.Compose([
+                T.ToTensor(),
+            ])
         else:
             raise ValueError(f'Unknown data augmentation policy "{data_augmentation}"')
 

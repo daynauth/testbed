@@ -5,7 +5,17 @@ import torchvision.models
 import torch.nn.functional as F
 from torch import nn
 
-__all__ = ['ssd300_avtn_retinanet_resnet', 'ssd300_avtn_faster_rcnn_resnet', 'ssd300_avtn_faster_rcnn_mobilenet_v3_large']
+__all__ = [
+    'ssd300_avtn_retinanet_resnet',
+    'ssd300_avtn_faster_rcnn_resnet',
+    'ssd300_avtn_faster_rcnn_mobilenet_v3_large',
+    'fasterrcnn_resnet_ssd_avtn1',
+    'fasterrcnn_resnet_ssd_avtn2',
+    'fasterrcnn_resnet_ssd_dirty_avtn1',
+    'fasterrcnn_resnet_ssd_dirty_avtn2',
+    'fasterrcnn_resnet_ssd_dirty_avtn4',
+    'ssd_resnet_baseline',
+    'ssd_resnet_baseline_unfreeze']
 
 def _xavier_init(conv: nn.Module):
     for layer in conv.modules():
@@ -23,8 +33,6 @@ class ReducedAVTN2(nn.Module):
         self.extra = extra
         self.features = nn.Sequential(*list(features.children())[:7])
         
-
-
         #gotta figure this part out
         conv4_block1 = self.features[-1][0]
         conv4_block1.conv1.stride = (1, 1)
@@ -36,11 +44,70 @@ class ReducedAVTN2(nn.Module):
 
         self.in_channels = self.features[-1][-1].bn3.weight.shape[0]
 
+        hidden_size = 1024
+        # 1024 - 1024 - 512
+        # (1024 * 1024 * 1 + 1024) + 2048 + (1024 * 512 * 9) + 1024
+        # = 5,771,264
         self.adjust_layer = nn.Sequential(
-            nn.Conv2d(self.in_channels, 512, 1),
-            nn.BatchNorm2d(512),
+            nn.Conv2d(self.in_channels, hidden_size, 1),
+            nn.BatchNorm2d(hidden_size),
             nn.ReLU(inplace=True),
-            nn.Conv2d(512, self.out_channels, kernel_size=3, stride=1, padding=1, bias=False),
+            nn.Conv2d(hidden_size, self.out_channels, kernel_size=3, stride=1, padding=1, bias=False),
+            nn.BatchNorm2d(self.out_channels),
+            nn.ReLU(inplace=True)
+        )
+
+        _xavier_init(self.adjust_layer)
+
+    def forward(self, x):
+        x = self.features(x) #backbone <--- cached
+        x = self.adjust_layer(x) #avtn layer
+
+        output = [x]
+
+        #forward prop through the extra layers
+        for block in self.extra:
+            x = block(x)
+            output.append(x)
+
+        return OrderedDict([(str(i), v) for i, v in enumerate(output)])
+
+class ReducedAVTN4(nn.Module):
+    def __init__(self, in_channels, out_channels, out_shape, features, extra):
+        super().__init__()
+        self.in_channels = in_channels
+        self.out_channels = out_channels
+        self.extra = extra
+        self.features = nn.Sequential(*list(features.children())[:7])
+        
+        #gotta figure this part out
+        conv4_block1 = self.features[-1][0]
+        conv4_block1.conv1.stride = (1, 1)
+        conv4_block1.conv2.stride = (1, 1)
+        conv4_block1.downsample[0].stride = (1, 1)
+
+        print(self.features[-1])
+
+
+        self.in_channels = self.features[-1][-1].bn3.weight.shape[0]
+        print(self.in_channels)
+        print(self.out_channels)
+        hidden_size = 1024
+        # 1024 - 512 - 1024 - 512 - 512
+        # (1024 * 512 * 1 + 512) + 1024 + (512 * 1024 * 9 + 1024) + 2048 + (1024 * 512 * 9 + 512) + (512 * 512 * 9 + 512)
+        # = 12,323,328
+
+        self.adjust_layer = nn.Sequential(
+            nn.Conv2d(self.in_channels, hidden_size, 1),
+            nn.BatchNorm2d(hidden_size),
+            nn.ReLU(inplace=True),
+            nn.Conv2d(hidden_size, hidden_size, kernel_size=3, stride=1, padding=1),
+            nn.BatchNorm2d(self.out_channels),
+            nn.ReLU(inplace=True),
+            nn.Conv2d(hidden_size, hidden_size, kernel_size=3, stride=1, padding=1),
+            nn.BatchNorm2d(self.out_channels),
+            nn.ReLU(inplace=True),
+            nn.Conv2d(hidden_size, self.out_channels, kernel_size=3, stride=1, padding=1),
             nn.BatchNorm2d(self.out_channels),
             nn.ReLU(inplace=True)
         )
@@ -66,10 +133,7 @@ class ReducedAVTN(nn.Module):
         super().__init__()
         self.in_channels = in_channels
         self.out_channels = out_channels
-        self.extra = extra
         self.features = nn.Sequential(*list(features.children())[:7])
-
-
 
         #gotta figure this part out
         conv4_block1 = self.features[-1][0]
@@ -77,15 +141,17 @@ class ReducedAVTN(nn.Module):
         conv4_block1.conv2.stride = (1, 1)
         conv4_block1.downsample[0].stride = (1, 1)
 
-
         self.in_channels = self.features[-1][-1].bn3.weight.shape[0]
-
+        # 1024 - 512
+        # (1024 * 512 * 1 + 512) + 1024
+        # = 525,824
         self.adjust_layer = nn.Sequential(
-            nn.Conv2d(self.in_channels, self.out_channels, 1, bias=False),
-            #nn.BatchNorm2d(self.out_channels),
-            #nn.ReLU(inplace=True)
+            nn.Conv2d(self.in_channels, self.out_channels, 1),
+            nn.BatchNorm2d(self.out_channels),
+            nn.ReLU(inplace=True)
         )
-
+        print("total params avtn1", sum(p.numel() for p in self.adjust_layer.parameters()))
+        self.extra = extra
         _xavier_init(self.adjust_layer)
 
     def forward(self, x):
@@ -244,3 +310,274 @@ model = ssd300_avtn_retinanet_resnet(False, True, 91, True)
 #test(model)
 
 #new_avtn()
+
+def fasterrcnn_resnet_ssd_avtn2(pretrained: bool = False, progress: bool = True, num_classes: int = 91, pretrained_backbone: bool = True):
+    features = torchvision.models.detection.fasterrcnn_resnet50_fpn(pretrained=True).backbone.body
+    ssd = torchvision.models.detection.ssd300_vgg16(pretrained=True)
+
+    size = (300, 300)
+
+    extra_layers = ssd.backbone.extra
+    anchor_generator = ssd.anchor_generator
+    head = ssd.head
+
+    #freeze all the layers before layer 3
+    #trainable_backbone_layers = ['layer3', 'layer4']
+    trainable_backbone_layers = []
+
+    for name, parameter in features.named_parameters():
+        if all([not name.startswith(layer) for layer in trainable_backbone_layers]):
+            parameter.requires_grad_(False)
+
+    for name, parameter in extra_layers.named_parameters():
+        parameter.requires_grad_(False)
+
+    for name, parameter in head.named_parameters():
+        parameter.requires_grad_(False)
+
+    in_channel, out_channel, output_shape = calculate_params(size, ssd.backbone.features, features)
+
+    backbone = ReducedAVTN2(in_channel, out_channel, output_shape, features, extra_layers)
+    model = torchvision.models.detection.SSD(backbone, anchor_generator, size, num_classes, head = head)
+    '''
+    print(model)
+    print("backbone")
+    for name, parameter in model.backbone.named_parameters():
+        print(name)
+        print(parameter.requires_grad)
+    print("head")
+    for name, parameter in model.head.named_parameters():
+        print(name)
+        print(parameter.requires_grad)
+    return
+    '''
+    return model
+
+def fasterrcnn_resnet_ssd_avtn1(pretrained: bool = False, progress: bool = True, num_classes: int = 91, pretrained_backbone: bool = True):
+    features = torchvision.models.detection.fasterrcnn_resnet50_fpn(pretrained=True).backbone.body
+    ssd = torchvision.models.detection.ssd300_vgg16(pretrained=True)
+
+    size = (300, 300)
+
+    extra_layers = ssd.backbone.extra
+    anchor_generator = ssd.anchor_generator
+    head = ssd.head
+
+    #freeze all the layers before layer 3
+    #trainable_backbone_layers = ['layer3', 'layer4']
+    trainable_backbone_layers = []
+
+    for name, parameter in features.named_parameters():
+        if all([not name.startswith(layer) for layer in trainable_backbone_layers]):
+            parameter.requires_grad_(False)
+
+    for name, parameter in extra_layers.named_parameters():
+        parameter.requires_grad_(False)
+
+    for name, parameter in head.named_parameters():
+        parameter.requires_grad_(False)
+
+    in_channel, out_channel, output_shape = calculate_params(size, ssd.backbone.features, features)
+
+    backbone = ReducedAVTN(in_channel, out_channel, output_shape, features, extra_layers)
+    model = torchvision.models.detection.SSD(backbone, anchor_generator, size, num_classes, head = head)
+    '''
+    print(model)
+    print("backbone")
+    for name, parameter in model.backbone.named_parameters():
+        print(name)
+        print(parameter.requires_grad)
+    print("head")
+    for name, parameter in model.head.named_parameters():
+        print(name)
+        print(parameter.requires_grad)
+    return
+    '''
+    return model
+
+def fasterrcnn_resnet_ssd_dirty_avtn1(pretrained: bool = False, progress: bool = True, num_classes: int = 91, pretrained_backbone: bool = True):
+    features = torchvision.models.detection.fasterrcnn_resnet50_fpn(pretrained=True).backbone.body
+    ssd = torchvision.models.detection.ssd300_vgg16(pretrained=True)
+
+    size = (300, 300)
+
+    extra_layers = ssd.backbone.extra
+    anchor_generator = ssd.anchor_generator
+    head = ssd.head
+
+    #freeze all the layers before layer 3
+    trainable_backbone_layers = ['layer3', 'layer4']
+
+    for name, parameter in features.named_parameters():
+        if all([not name.startswith(layer) for layer in trainable_backbone_layers]):
+            parameter.requires_grad_(False)
+
+    for name, parameter in extra_layers.named_parameters():
+        parameter.requires_grad_(False)
+
+    for name, parameter in head.named_parameters():
+        parameter.requires_grad_(False)
+
+    in_channel, out_channel, output_shape = calculate_params(size, ssd.backbone.features, features)
+
+    backbone = ReducedAVTN(in_channel, out_channel, output_shape, features, extra_layers)
+    model = torchvision.models.detection.SSD(backbone, anchor_generator, size, num_classes, head = head)
+    '''
+    print(model)
+    print("backbone")
+    for name, parameter in model.backbone.named_parameters():
+        print(name)
+        print(parameter.requires_grad)
+    print("head")
+    for name, parameter in model.head.named_parameters():
+        print(name)
+        print(parameter.requires_grad)
+    #Sanity check, making sure model is runable
+    model.eval()
+    rand = torch.rand((3, 300,300))
+    print(model([rand]))
+    '''
+    return model
+
+def fasterrcnn_resnet_ssd_dirty_avtn2(pretrained: bool = False, progress: bool = True, num_classes: int = 91, pretrained_backbone: bool = True):
+    features = torchvision.models.detection.fasterrcnn_resnet50_fpn(pretrained=True).backbone.body
+    ssd = torchvision.models.detection.ssd300_vgg16(pretrained=True)
+
+    size = (300, 300)
+
+    extra_layers = ssd.backbone.extra
+    anchor_generator = ssd.anchor_generator
+    head = ssd.head
+
+    #freeze all the layers before layer 3
+    trainable_backbone_layers = ['layer3', 'layer4']
+
+    for name, parameter in features.named_parameters():
+        if all([not name.startswith(layer) for layer in trainable_backbone_layers]):
+            parameter.requires_grad_(False)
+
+    for name, parameter in extra_layers.named_parameters():
+        parameter.requires_grad_(False)
+
+    for name, parameter in head.named_parameters():
+        parameter.requires_grad_(False)
+
+    in_channel, out_channel, output_shape = calculate_params(size, ssd.backbone.features, features)
+
+    backbone = ReducedAVTN2(in_channel, out_channel, output_shape, features, extra_layers)
+    model = torchvision.models.detection.SSD(backbone, anchor_generator, size, num_classes, head = head)
+
+    return model
+
+def fasterrcnn_resnet_ssd_dirty_avtn4(pretrained: bool = False, progress: bool = True, num_classes: int = 91, pretrained_backbone: bool = True):
+    features = torchvision.models.detection.fasterrcnn_resnet50_fpn(pretrained=True).backbone.body
+    ssd = torchvision.models.detection.ssd300_vgg16(pretrained=True)
+
+    size = (300, 300)
+
+    extra_layers = ssd.backbone.extra
+    anchor_generator = ssd.anchor_generator
+    head = ssd.head
+
+    #freeze all the layers before layer 3
+    trainable_backbone_layers = ['layer3', 'layer4']
+
+    for name, parameter in features.named_parameters():
+        if all([not name.startswith(layer) for layer in trainable_backbone_layers]):
+            parameter.requires_grad_(False)
+
+    for name, parameter in extra_layers.named_parameters():
+        parameter.requires_grad_(False)
+
+    for name, parameter in head.named_parameters():
+        parameter.requires_grad_(False)
+
+    in_channel, out_channel, output_shape = calculate_params(size, ssd.backbone.features, features)
+
+    backbone = ReducedAVTN4(in_channel, out_channel, output_shape, features, extra_layers)
+    model = torchvision.models.detection.SSD(backbone, anchor_generator, size, num_classes, head = head)
+    return model
+
+class ResnetSSD_BASELINE_BACKBONE(nn.Module):
+    def __init__(self, in_channels, out_channels, out_shape, features, extra):
+        super().__init__()
+        self.in_channels = in_channels
+        self.out_channels = out_channels
+        self.features = nn.Sequential(*list(features.children())[:7])
+
+        conv4_block1 = self.features[-1][0]
+        conv4_block1.conv1.stride = (1, 1)
+        conv4_block1.conv2.stride = (1, 1)
+        conv4_block1.downsample[0].stride = (1, 1)
+
+        self.in_channels = self.features[-1][-1].bn3.weight.shape[0]
+
+        self.adjust_layer = nn.Sequential(
+            nn.Conv2d(self.in_channels, self.out_channels, 1),
+        )
+
+        self.extra = extra
+        
+        _xavier_init(self.adjust_layer)
+        _xavier_init(self.extra)
+
+    def forward(self, x):
+        x = self.features(x) #backbone <--- cached
+        x = self.adjust_layer(x) #avtn layer
+
+        output = [x]
+
+        #forward prop through the extra layers
+        for block in self.extra:
+            x = block(x)
+            output.append(x)
+
+        return OrderedDict([(str(i), v) for i, v in enumerate(output)])
+
+def ssd_resnet_baseline(pretrained: bool = False, progress: bool = True, num_classes: int = 91, pretrained_backbone: bool = True):
+    features = torchvision.models.detection.fasterrcnn_resnet50_fpn(pretrained=True).backbone.body
+    ssd = torchvision.models.detection.ssd300_vgg16(pretrained=False)
+
+    size = (300, 300)
+
+    extra_layers = ssd.backbone.extra
+    anchor_generator = ssd.anchor_generator
+    head = ssd.head
+
+    for name, parameter in features.named_parameters():
+        parameter.requires_grad_(False)
+    for name, parameter in extra_layers.named_parameters():
+        parameter.requires_grad_(True)
+    for name, parameter in head.named_parameters():
+        parameter.requires_grad_(True)
+        
+    in_channel, out_channel, output_shape = calculate_params(size, ssd.backbone.features, features)
+
+    backbone = ResnetSSD_BASELINE_BACKBONE(in_channel, out_channel, output_shape, features, extra_layers)
+    model = torchvision.models.detection.SSD(backbone, anchor_generator, size, num_classes, head = head)
+
+    return model
+
+def ssd_resnet_baseline_unfreeze(pretrained: bool = False, progress: bool = True, num_classes: int = 91, pretrained_backbone: bool = True):
+    features = torchvision.models.detection.fasterrcnn_resnet50_fpn(pretrained=True).backbone.body
+    ssd = torchvision.models.detection.ssd300_vgg16(pretrained=False)
+
+    size = (300, 300)
+
+    extra_layers = ssd.backbone.extra
+    anchor_generator = ssd.anchor_generator
+    head = ssd.head
+
+    for name, parameter in features.named_parameters():
+        parameter.requires_grad_(True)
+    for name, parameter in extra_layers.named_parameters():
+        parameter.requires_grad_(True)
+    for name, parameter in head.named_parameters():
+        parameter.requires_grad_(True)
+        
+    in_channel, out_channel, output_shape = calculate_params(size, ssd.backbone.features, features)
+
+    backbone = ResnetSSD_BASELINE_BACKBONE(in_channel, out_channel, output_shape, features, extra_layers)
+    model = torchvision.models.detection.SSD(backbone, anchor_generator, size, num_classes, head = head)
+
+    return model
