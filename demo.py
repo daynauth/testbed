@@ -73,7 +73,7 @@ def list_infer(model1 : nn.Module, model2 : nn.Module, image_list: List[ndarray]
 def to_int(box: Tuple[float, float, float, float]) -> Tuple[int, int, int, int]:
     return (int(box[0]), int(box[1]), int(box[2]), int(box[3]))
 
-def draw_bounding_boxes(image: ndarray, outputs, cat ) -> ndarray:
+def draw_bounding_boxes(image: ndarray, outputs, cat) -> ndarray:
     image = image.copy()
     keep = outputs['scores'] > 0.5
     boxes = outputs['boxes'][keep].tolist()
@@ -93,7 +93,7 @@ def get_images(num_images, image_set, rand = True):
     return image_set[0: num_images]
 
 
-def transforms(image_list):
+def transforms(image_list: List):
     t = T.ToTensor()
     return [t(image).unsqueeze(0) for image in image_list]
 
@@ -113,9 +113,9 @@ def get_args_parser(add_help=True):
 if __name__ == "__main__":
     args = get_args_parser().parse_args()
 
-
     model1 = models.__dict__[args.model1](pretrained = True)
     model2 = models.__dict__[args.model2](pretrained = True)
+    
     num_images = args.n
 
 
