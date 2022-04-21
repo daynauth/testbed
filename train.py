@@ -188,7 +188,11 @@ def main(args):
     for epoch in range(args.start_epoch, args.epochs):
         # if args.distributed:
         #     train_sampler.set_epoch(epoch)
+        epoch_start = time.time()
         train_one_epoch(model, optimizer, data_loader, device, epoch, args.print_freq, writer)
+        epoch_end = time.time() - epoch_start
+        epoch_time = str(datetime.timedelta(seconds=int(epoch_end)))
+        print('Training time for a single epoch {}'.format(epoch_time))
         lr_scheduler.step()
         if args.output_dir:
             checkpoint = {
